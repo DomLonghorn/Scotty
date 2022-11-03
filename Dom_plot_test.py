@@ -249,9 +249,11 @@ plt.savefig("propagation_toroidal.jpg", dpi=200)
 
 plt.figure()
 plt.plot(l_lc, poloidal_flux_output)
+plt.savefig("l_lc v poloidal_flux_output.jpg")
 
 plt.figure()
 plt.plot(l_lc, electron_density_output)
+plt.savefig("l_lc v dlectron_density_output")
 
 plt.figure()
 plt.subplot(1, 3, 1)
@@ -498,6 +500,7 @@ plt.plot(l_lc, factor_O, label="O mode")
 plt.plot(l_lc, factor_X, label="X mode")
 plt.legend()
 plt.xlabel("l - l_c")
+plt.savefig("Finalfig.jpg")
 
 # plt.figure()
 # plt.subplot(2,2,1)
