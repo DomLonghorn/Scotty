@@ -200,10 +200,10 @@ plt.clabel(
 # plt.xlim(1.0,1.8)
 # plt.ylim(-0.7,0.1)
 # tikzplotlib.clean_figure() # Removes points that are outside the plot area
-plt.plot(q_R_array[:out_index], q_Z_array[:out_index], "k")
-plt.plot([launch_position[0], q_R_array[0]], [launch_position[2], q_Z_array[0]], ":k")
-plt.plot(W_line_RZ_1_Rpoints[:out_index], W_line_RZ_1_Zpoints[:out_index], "k--")
-plt.plot(W_line_RZ_2_Rpoints[:out_index], W_line_RZ_2_Zpoints[:out_index], "k--")
+# plt.plot(q_R_array[:out_index], q_Z_array[:out_index], "k")
+# plt.plot([launch_position[0], q_R_array[0]], [launch_position[2], q_Z_array[0]], ":k")
+# plt.plot(W_line_RZ_1_Rpoints[:out_index], W_line_RZ_1_Zpoints[:out_index], "k--")
+# plt.plot(W_line_RZ_2_Rpoints[:out_index], W_line_RZ_2_Zpoints[:out_index], "k--")
 plt.xlim(data_R_coord[0], data_R_coord[-1])
 plt.ylim(data_Z_coord[0], data_Z_coord[-1])
 
@@ -249,11 +249,9 @@ plt.savefig("propagation_toroidal.jpg", dpi=200)
 
 plt.figure()
 plt.plot(l_lc, poloidal_flux_output)
-plt.savefig("l_lc v poloidal_flux_output.jpg")
 
 plt.figure()
 plt.plot(l_lc, electron_density_output)
-plt.savefig("l_lc v dlectron_density_output")
 
 plt.figure()
 plt.subplot(1, 3, 1)
@@ -262,6 +260,7 @@ plt.subplot(1, 3, 2)
 plt.plot(l_lc, K_Z_array, "k")
 plt.subplot(1, 3, 3)
 plt.plot(l_lc, K_magnitude_array, "k")
+
 
 plt.figure()
 plt.subplot(1, 3, 1)
@@ -500,7 +499,6 @@ plt.plot(l_lc, factor_O, label="O mode")
 plt.plot(l_lc, factor_X, label="X mode")
 plt.legend()
 plt.xlabel("l - l_c")
-plt.savefig("Finalfig.jpg")
 
 # plt.figure()
 # plt.subplot(2,2,1)
