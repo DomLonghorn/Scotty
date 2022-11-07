@@ -40,10 +40,10 @@ B_R = B_magnitude * b_hat_output[:, 0]
 B_T = B_magnitude * b_hat_output[:, 1]
 B_Z = B_magnitude * b_hat_output[:, 2]
 
-# print(len(x_hat_output))
-# print(len(electron_density_output))
-# print(len(B_R))
-# print(len(data_Z_coord))
+print(len(x_hat_output))
+print(len(electron_density_output))
+print(len(B_R))
+print(len(data_Z_coord))
 
 
 plt.figure(figsize=(5, 5))
@@ -52,7 +52,7 @@ contour_levels = np.linspace(0, 1, 11)
 CS = plt.contour(
     data_R_coord,
     data_Z_coord,
-    B_T,
+    # B_T[0, -1], #Need to figure out this array length issue, currently tempted to just remove the end value currently
     contour_levels,
     vmin=0,
     vmax=1.2,
