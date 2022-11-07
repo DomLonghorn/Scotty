@@ -25,7 +25,8 @@ loadfile = np.load("data_output" + suffix + ".npz")
 electron_density_output = loadfile["electron_density_output"]
 B_magnitude = loadfile["B_magnitude"]
 b_hat_output = loadfile["b_hat_output"]
-
+x_hat_output = loadfile["x_hat_output"]
+loadfile.close()
 
 # Loads in input conditions
 loadfile = np.load("data_input" + suffix + ".npz")
@@ -39,5 +40,7 @@ B_R = B_magnitude * b_hat_output[:, 0]
 B_T = B_magnitude * b_hat_output[:, 1]
 B_Z = B_magnitude * b_hat_output[:, 2]
 
+print(len(x_hat_output))
 print(len(electron_density_output))
+print(len(B_R))
 print(len(data_R_coord))
