@@ -18,7 +18,7 @@ import math
 from scipy import constants, integrate
 import sys
 
-suffix = ""
+suffix = "_t3.00"
 
 # Loads in the output variables needed
 loadfile = np.load("data_output" + suffix + ".npz")
@@ -40,7 +40,29 @@ B_R = B_magnitude * b_hat_output[:, 0]
 B_T = B_magnitude * b_hat_output[:, 1]
 B_Z = B_magnitude * b_hat_output[:, 2]
 
-print(len(x_hat_output))
-print(len(electron_density_output))
-print(len(B_R))
-print(len(data_R_coord))
+# print(len(x_hat_output))
+# print(len(electron_density_output))
+# print(len(B_R))
+# print(len(data_Z_coord))
+
+
+plt.figure(figsize=(5, 5))
+plt.title("Poloidal Plane")
+contour_levels = np.linspace(0, 1, 11)
+CS = plt.contour(
+    data_R_coord,
+    data_Z_coord,
+    B_T,
+    contour_levels,
+    vmin=0,
+    vmax=1.2,
+    cmap="inferno",
+)
+plt.clabel(
+    CS, inline=True, fontsize=10, inline_spacing=-5, fmt="%1.1f", use_clabeltext=True
+)
+plt.xlim(data_R_coord[0], data_R_coord[-1])
+plt.ylim(data_Z_coord[0], data_Z_coord[-1])
+
+plt.xlabel("R / m")
+plt.ylabel("Z / m")
