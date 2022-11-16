@@ -40,29 +40,29 @@ B_R = B_magnitude * b_hat_output[:, 0]
 B_T = B_magnitude * b_hat_output[:, 1]
 B_Z = B_magnitude * b_hat_output[:, 2]
 
-print(len(x_hat_output))
-print(len(electron_density_output))
-print(len(B_R))
-print(len(data_Z_coord))
-
-
-plt.figure(figsize=(5, 5))
-plt.title("Poloidal Plane")
-contour_levels = np.linspace(0, 1, 11)
-CS = plt.contour(
-    data_R_coord,
-    data_Z_coord,
-    # B_T[0, -1], #Need to figure out this array length issue, currently tempted to just remove the end value currently
-    contour_levels,
-    vmin=0,
-    vmax=1.2,
-    cmap="inferno",
-)
-plt.clabel(
-    CS, inline=True, fontsize=10, inline_spacing=-5, fmt="%1.1f", use_clabeltext=True
-)
-plt.xlim(data_R_coord[0], data_R_coord[-1])
-plt.ylim(data_Z_coord[0], data_Z_coord[-1])
-
+# plt.title("Poloidal Plane")
+# contour_levels = np.linspace(0, 1, 11)
+# CS = plt.contour(
+#     data_R_coord,
+#     data_Z_coord,
+#     np.transpose(poloidalFlux_grid),
+#     contour_levels,
+#     vmin=0,
+#     vmax=1.2,
+#     cmap="inferno",
+# )
+# plt.clabel(
+#     CS, inline=True, fontsize=10, inline_spacing=-5, fmt="%1.1f", use_clabeltext=True
+# )  # Labels the flux surfaces
+# plt.xlim(1.0,1.8)
+# plt.ylim(-0.7,0.1)
+# tikzplotlib.clean_figure() # Removes points that are outside the plot area
+# plt.plot(q_R_array[:out_index], q_Z_array[:out_index], "k")
+# plt.plot([launch_position[0], q_R_array[0]], [launch_position[2], q_Z_array[0]], ":k")
+# plt.plot(W_line_RZ_1_Rpoints[:out_index], W_line_RZ_1_Zpoints[:out_index], "k--")
+# plt.plot(W_line_RZ_2_Rpoints[:out_index], W_line_RZ_2_Zpoints[:out_index], "k--")
+# plt.xlim(data_R_coord[0], data_R_coord[-1])
+# plt.ylim(data_Z_coord[0], data_Z_coord[-1])
 plt.xlabel("R / m")
 plt.ylabel("Z / m")
+plt.show()
