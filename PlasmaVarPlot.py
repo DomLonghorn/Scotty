@@ -18,7 +18,7 @@ import math
 from scipy import constants, integrate
 import sys
 
-suffix = "_t3.00"
+suffix = "_test1t3.00"
 
 # Loads in the output variables needed
 loadfile = np.load("data_output" + suffix + ".npz")
@@ -44,6 +44,12 @@ B_R = B_magnitude * b_hat_output[:, 0]
 B_T = B_magnitude * b_hat_output[:, 1]
 B_Z = B_magnitude * b_hat_output[:, 2]
 
+
+print(B_T)
+print("-----")
+print(B_R)
+print("-----")
+print(B_Z)
 ## For plotting how the beam propagates from launch to entry
 launch_position_X, launch_position_Y, launch_position_Z = find_q_lab_Cartesian(
     launch_position
