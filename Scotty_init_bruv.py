@@ -300,7 +300,7 @@ def get_parameters_for_Scotty(
         args_dict["poloidal_launch_angle_Torbeam"] = 6.0
         args_dict["toroidal_launch_angle_Torbeam"] = 0.0
         args_dict["launch_freq_GHz"] = 55.0
-        args_dict["mode_flag"] = 2
+        args_dict["mode_flag"] = 1
         args_dict["launch_beam_width"] = 0.04
         args_dict["launch_beam_curvature"] = 1 / -4.0
         args_dict["launch_position"] = np.array(

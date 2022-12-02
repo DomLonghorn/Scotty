@@ -39,47 +39,56 @@ data_Z_coord = loadfile["data_Z_coord"]
 poloidalFlux_grid = loadfile["poloidalFlux_grid"]
 loadfile.close()
 
-# Creates the components of the B field in the R, T and Z planes
-B_R = B_magnitude * b_hat_output[:, 0]
-B_T = B_magnitude * b_hat_output[:, 1]
-B_Z = B_magnitude * b_hat_output[:, 2]
+print(data_R_coord)
+print("---")
+print(data_Z_coord)
+print("---")
+print(poloidalFlux_grid)
+print("----")
+print(electron_density_output)
+print(len(q_R_array))
+# print(len(data_R_coord))
 
+# # Creates the components of the B field in the R, T and Z planes
+# B_R = B_magnitude * b_hat_output[:, 0]
+# B_T = B_magnitude * b_hat_output[:, 1]
+# B_Z = B_magnitude * b_hat_output[:, 2]
 
-print(B_T)
-print("-----")
-print(B_R)
-print("-----")
-print(B_Z)
-## For plotting how the beam propagates from launch to entry
-launch_position_X, launch_position_Y, launch_position_Z = find_q_lab_Cartesian(
-    launch_position
-)
-entry_position_X, entry_position_Y, entry_position_Z = find_q_lab_Cartesian(
-    np.array([q_R_array[0], q_zeta_array[0], q_Z_array[0]])
-)
+# print(B_T)
+# print("-----")
+# print(B_R)
+# print("-----")
+# print(B_Z)
+# ## For plotting how the beam propagates from launch to entry
+# launch_position_X, launch_position_Y, launch_position_Z = find_q_lab_Cartesian(
+#     launch_position
+# )
+# entry_position_X, entry_position_Y, entry_position_Z = find_q_lab_Cartesian(
+#     np.array([q_R_array[0], q_zeta_array[0], q_Z_array[0]])
+# )
 
-numberOfDataPoints = np.size(q_R_array)
-out_index = numberOfDataPoints
+# numberOfDataPoints = np.size(q_R_array)
+# out_index = numberOfDataPoints
 
-plt.title("Poloidal Plane")
-contour_levels = np.linspace(0, 1, 11)
-CS = plt.contour(
-    data_R_coord,
-    data_Z_coord,
-    np.transpose(poloidalFlux_grid),
-    contour_levels,
-    vmin=0,
-    vmax=1.2,
-    cmap="inferno",
-)
-plt.clabel(
-    CS, inline=True, fontsize=10, inline_spacing=-5, fmt="%1.1f", use_clabeltext=True
-)  # Labels the flux surfaces
+# plt.title("Poloidal Plane")
+# contour_levels = np.linspace(0, 1, 11)
+# CS = plt.contour(
+#     data_R_coord,
+#     data_Z_coord,
+#     np.transpose(poloidalFlux_grid),
+#     contour_levels,
+#     vmin=0,
+#     vmax=1.2,
+#     cmap="inferno",
+# )
+# plt.clabel(
+#     CS, inline=True, fontsize=10, inline_spacing=-5, fmt="%1.1f", use_clabeltext=True
+# )  # Labels the flux surfaces
 
-plt.plot(q_R_array[:out_index], q_Z_array[:out_index], "k")
-plt.plot([launch_position[0], q_R_array[0]], [launch_position[2], q_Z_array[0]], ":k")
-plt.xlim(data_R_coord[0], data_R_coord[-1])
-plt.ylim(data_Z_coord[0], data_Z_coord[-1])
-plt.xlabel("R / m")
-plt.ylabel("Z / m")
-plt.savefig("Ray_Propagation.jpg")
+# plt.plot(q_R_array[:out_index], q_Z_array[:out_index], "k")
+# plt.plot([launch_position[0], q_R_array[0]], [launch_position[2], q_Z_array[0]], ":k")
+# plt.xlim(data_R_coord[0], data_R_coord[-1])
+# plt.ylim(data_Z_coord[0], data_Z_coord[-1])
+# plt.xlabel("R / m")
+# plt.ylabel("Z / m")
+# plt.savefig("Ray_Propagation.jpg")
