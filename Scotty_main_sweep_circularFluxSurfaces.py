@@ -38,7 +38,7 @@ for B_p_a in B_p_a_sweep:
     args_dict, kwargs_dict = get_parameters_for_Scotty("DBS_synthetic")
 
     kwargs_dict["B_p_a"] = B_p_a
-    kwargs_dict["output_filename_suffix"] = "_test1bpa" + f"{B_p_a:.2f}"
+    kwargs_dict["output_filename_suffix"] = "_bpa" + f"{B_p_a:.2f}"
 
     beam_me_up(**args_dict, **kwargs_dict)
 
@@ -47,6 +47,6 @@ for tor_launch_angle in tor_launch_angles:
 
     args_dict["toroidal_launch_angle_Torbeam"] = tor_launch_angle
     kwargs_dict["B_p_a"] = 0.0
-    kwargs_dict["output_filename_suffix"] = "_test1t" + f"{tor_launch_angle:.2f}"
+    kwargs_dict["output_filename_suffix"] = "_t" + f"{tor_launch_angle:.2f}"
 
     beam_me_up(**args_dict, **kwargs_dict)

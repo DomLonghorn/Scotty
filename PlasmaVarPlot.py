@@ -37,16 +37,10 @@ launch_position = loadfile["launch_position"]
 data_R_coord = loadfile["data_R_coord"]
 data_Z_coord = loadfile["data_Z_coord"]
 poloidalFlux_grid = loadfile["poloidalFlux_grid"]
+ne_data_density_array = loadfile["ne_data_density_array"]
 loadfile.close()
 
-print(data_R_coord)
-print("---")
-print(data_Z_coord)
-print("---")
-print(poloidalFlux_grid)
-print("----")
-print(electron_density_output)
-print(len(q_R_array))
+# print(len(ne_data_array))
 # print(len(data_R_coord))
 
 # # Creates the components of the B field in the R, T and Z planes
