@@ -18,7 +18,7 @@ import math
 from scipy import constants, integrate
 import sys
 
-suffix = "_test1t3.00"
+suffix = "_t"
 
 # Loads in the output variables needed
 loadfile = np.load("data_output" + suffix + ".npz")
@@ -37,7 +37,7 @@ launch_position = loadfile["launch_position"]
 data_R_coord = loadfile["data_R_coord"]
 data_Z_coord = loadfile["data_Z_coord"]
 poloidalFlux_grid = loadfile["poloidalFlux_grid"]
-ne_data_density_array = loadfile["ne_data_density_array"]
+# ne_data_density_array = loadfile["ne_data_density_array"]
 loadfile.close()
 
 # print(len(ne_data_array))
@@ -48,7 +48,7 @@ loadfile.close()
 # B_T = B_magnitude * b_hat_output[:, 1]
 # B_Z = B_magnitude * b_hat_output[:, 2]
 
-# print(B_T)
+print(len(data_R_coord))
 # print("-----")
 # print(B_R)
 # print("-----")

@@ -507,6 +507,7 @@ def find_H(
 
     poloidal_flux = interp_poloidal_flux(q_R, q_Z, grid=False)
     electron_density = find_density_1D(poloidal_flux)
+    print(electron_density)
     B_R = np.squeeze(find_B_R(q_R, q_Z))
     B_T = np.squeeze(find_B_T(q_R, q_Z))
     B_Z = np.squeeze(find_B_Z(q_R, q_Z))
@@ -532,8 +533,6 @@ def find_H(
     Booker_gamma = find_Booker_gamma(
         electron_density, B_Total, launch_angular_frequency
     )
-
-    # np.savetxt("testA.csv", electron_density, delimiter=",")
     # Due to numerical errors, sometimes H_discriminant ends up being a very small negative number
     # That's why we take max(0, H_discriminant) in the sqrt
 
@@ -548,7 +547,6 @@ def find_H(
         )
         # np.sqrt(Booker_beta**2 - 4*Booker_alpha*Booker_gamma)
     ) / (2 * Booker_alpha)
-
     return H
 
 
