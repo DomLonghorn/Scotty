@@ -141,6 +141,7 @@ from Scotty_fun_mix import (
     find_d2H_dKZ_dZ,
 )  # \nabla_K \nabla H
 
+densitylist = []
 # For find_B if using efit files directly
 from Scotty_fun_CFD import find_dpolflux_dR, find_dpolflux_dZ
 
@@ -376,8 +377,6 @@ def beam_me_up(
             is_inside = poloidal_flux <= poloidal_flux_enter  # Boolean array
             # The Boolean array sets stuff outside poloidal_flux_enter to zero
             density = is_inside * density_fit
-            print(density)
-            # np.savetxt("Density.csv", density, delimiter=",")
             return density
 
     else:
@@ -1102,6 +1101,7 @@ def beam_me_up(
                 Z_coarse_search_array[first_inside_index],
                 numberOfFineSearchPoints,
             )
+            print("There are this many points:", Z_fine_search_array.size)
             poloidal_fine_search_array = np.zeros(numberOfFineSearchPoints)
             poloidal_fine_search_array = interp_poloidal_flux(
                 R_fine_search_array, Z_fine_search_array, grid=False

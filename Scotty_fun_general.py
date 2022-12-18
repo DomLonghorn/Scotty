@@ -507,7 +507,6 @@ def find_H(
 
     poloidal_flux = interp_poloidal_flux(q_R, q_Z, grid=False)
     electron_density = find_density_1D(poloidal_flux)
-    print(electron_density)
     B_R = np.squeeze(find_B_R(q_R, q_Z))
     B_T = np.squeeze(find_B_T(q_R, q_Z))
     B_Z = np.squeeze(find_B_Z(q_R, q_Z))
