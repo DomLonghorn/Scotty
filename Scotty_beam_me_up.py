@@ -624,6 +624,23 @@ def beam_me_up(
             *np.meshgrid(data_R_coord, data_Z_coord, sparse=False, indexing="ij")
         )
 
+        #Establishing equilibrium magnetic field
+        B_R_grid = []
+        B_T_grid = []
+        for i in range (0, len(data_R_coord)):
+            for j in range (0, len(data_Z_coord)):
+                B_R_grid.append(find_B_R(data_R_coord[i], data_Z_coord[j]))
+                B_T_grid.append(find_B_T(data_R_coord[i], data_Z_coord[j]))
+                print(find_B_T(data_R_coord[i], data_Z_coord[j]))
+        B_R_grid = np.array(B_R_grid)
+        B_T_grid = np.array(B_T_grid)
+        print(np.size(B_R_grid))
+        print(B_T_grid)
+        np.savez(
+            output_path + "EqulibriumQuantities" + output_filename_suffix,
+            B_R_grid=B_R_grid,
+            B_T_grid=B_T_grid,
+        )
     elif (find_B_method == "EFITpp") or (find_B_method == "UDA_saved"):
         if find_B_method == "EFITpp":
             print(

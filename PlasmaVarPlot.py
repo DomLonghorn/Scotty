@@ -40,14 +40,10 @@ poloidalFlux_grid = loadfile["poloidalFlux_grid"]
 # ne_data_density_array = loadfile["ne_data_density_array"]
 loadfile.close()
 
-
-equldensityarray = np.fromfile("ne.dat", dtype=float, count=-1, sep=" ")
-print(np.size(equldensityarray))
-print(np.size(poloidalFlux_grid))
-print(len(data_R_coord))
-# print("-----")
-# print(B_R)
-# print("-----")
+# Loads in equilibrium data
+loadfile = np.load("EqulibriumQuantities" + suffix + ".npz")
+B_R_grid = loadfile["B_R_grid"]
+B_T_grid = loadfile["B_T_grid"]
 
 # print(B_Z)
 ## For plotting how the beam propagates from launch to entry
@@ -60,6 +56,22 @@ entry_position_X, entry_position_Y, entry_position_Z = find_q_lab_Cartesian(
 
 numberOfDataPoints = np.size(q_R_array)
 out_index = numberOfDataPoints
+
+print(B_R_grid)
+
+plt.title("B_T_grid")
+CS = plt.contour(
+    data_R_coord,
+    data_Z_coord,
+    np.transpose(B_T_grid.reshape(len(data_R_coord), len(data_Z_coord))),
+    cmap="inferno",
+)
+plt.xlim(data_R_coord[0], data_R_coord[-1])
+plt.ylim(data_Z_coord[0], data_Z_coord[-1])
+plt.xlabel("R / m")
+plt.ylabel("Z / m")
+plt.show()
+
 
 # plt.title("Poloidal Plane")
 # contour_levels = np.linspace(0, 1, 11)
