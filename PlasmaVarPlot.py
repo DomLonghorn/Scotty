@@ -18,7 +18,7 @@ import math
 from scipy import constants, integrate
 import sys
 
-suffix = "_t"
+suffix = "_Bpa0.10"
 
 # Loads in the output variables needed
 loadfile = np.load("data_output" + suffix + ".npz")
@@ -41,11 +41,10 @@ poloidalFlux_grid = loadfile["poloidalFlux_grid"]
 loadfile.close()
 
 # Loads in equilibrium data
-loadfile = np.load("EqulibriumQuantities" + suffix + ".npz")
+loadfile = np.load("Equilibrium_Output" + suffix + ".npz")
 B_R_grid = loadfile["B_R_grid"]
 B_T_grid = loadfile["B_T_grid"]
 
-# print(B_Z)
 ## For plotting how the beam propagates from launch to entry
 launch_position_X, launch_position_Y, launch_position_Z = find_q_lab_Cartesian(
     launch_position
@@ -57,20 +56,32 @@ entry_position_X, entry_position_Y, entry_position_Z = find_q_lab_Cartesian(
 numberOfDataPoints = np.size(q_R_array)
 out_index = numberOfDataPoints
 
-print(B_R_grid)
 
-plt.title("B_T_grid")
-CS = plt.contour(
+
+def equilcontourplot(GridToPlot, title, filename="NONE", showfig=False, savefig=True):
+    if filename == "NONE":
+        filename = title
+    plt.title(title)
+    CS = plt.contour(
     data_R_coord,
     data_Z_coord,
-    np.transpose(B_T_grid.reshape(len(data_R_coord), len(data_Z_coord))),
+    np.transpose(GridToPlot.reshape(len(data_R_coord), len(data_Z_coord))),
     cmap="inferno",
-)
-plt.xlim(data_R_coord[0], data_R_coord[-1])
-plt.ylim(data_Z_coord[0], data_Z_coord[-1])
-plt.xlabel("R / m")
-plt.ylabel("Z / m")
-plt.show()
+    )
+    plt.xlim(data_R_coord[0], data_R_coord[-1])
+    plt.ylim(data_Z_coord[0], data_Z_coord[-1])
+    plt.xlabel("R / m")
+    plt.ylabel("Z / m")
+    if showfig:
+        plt.show()
+    if savefig:
+        plt.savefig(filename + ".jpg")
+    plt.close()
+    
+    
+    
+equilcontourplot(B_R_grid, "B_R_grid")
+equilcontourplot(B_T_grid, "B_T_grid")
 
 
 # plt.title("Poloidal Plane")
