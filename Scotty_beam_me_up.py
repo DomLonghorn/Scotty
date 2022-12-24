@@ -216,19 +216,19 @@ def beam_me_up(
     if output_path is None:
         if platform.system() == "Windows":
             output_path = os.path.dirname(os.path.abspath(__file__)) + "\\"
-        elif platform.system() == "Linux":
+        elif platform.system() == "Linux" or platform.system() == "Darwin":
             output_path = os.path.dirname(os.path.abspath(__file__)) + "/"
 
     if ne_data_path is None:
         if platform.system() == "Windows":
             ne_data_path = os.path.dirname(os.path.abspath(__file__)) + "\\"
-        elif platform.system() == "Linux":
+        elif platform.system() == "Linux" or platform.system() == "Darwin":
             ne_data_path = os.path.dirname(os.path.abspath(__file__)) + "/"
 
     if magnetic_data_path is None:
         if platform.system() == "Windows":
             magnetic_data_path = os.path.dirname(os.path.abspath(__file__)) + "\\"
-        elif platform.system() == "Linux":
+        elif platform.system() == "Linux" or platform.system() == "Darwin":
             magnetic_data_path = os.path.dirname(os.path.abspath(__file__)) + "/"
 
     if density_fit_parameters is None:

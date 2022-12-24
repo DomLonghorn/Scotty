@@ -793,7 +793,7 @@ def user_settings(diagnostic, user, shot):
     # Default path: all input files in the same folder as Scotty
     if platform.system() == "Windows":
         default_input_files_path = os.path.dirname(os.path.abspath(__file__)) + "\\"
-    elif platform.system() == "Linux":
+    elif platform.system() == "Linux" or platform.system() == "Darwin":
         default_input_files_path = os.path.dirname(os.path.abspath(__file__)) + "/"
 
     #########################
