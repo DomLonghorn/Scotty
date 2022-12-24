@@ -73,6 +73,7 @@ def equilcontourplot(GridToPlot, title, filename="NONE", showfig=False, savefig=
     plt.xlim(data_R_coord[0], data_R_coord[-1])
     plt.ylim(data_Z_coord[0], data_Z_coord[-1])
     plt.xlabel("R / m")
+    plt.colorbar()
     plt.ylabel("Z / m")
     if showfig:
         plt.show()
