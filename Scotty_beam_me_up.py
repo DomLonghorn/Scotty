@@ -624,13 +624,21 @@ def beam_me_up(
             *np.meshgrid(data_R_coord, data_Z_coord, sparse=False, indexing="ij")
         )
 
-        #Establishing equilibrium magnetic field
+        # Establishing equilibrium magnetic field
         B_R_grid = find_B_R(*np.meshgrid(data_R_coord, data_Z_coord, sparse=False, indexing="ij"))
         B_T_grid = find_B_T(*np.meshgrid(data_R_coord, data_Z_coord, sparse=False, indexing="ij"))
+        B_Z_grid = find_B_Z(*np.meshgrid(data_R_coord, data_Z_coord, sparse=False, indexing="ij"))
+        Electron_Density = find_density_1D(interp_poloidal_flux(data_R_coord, data_Z_coord))
+        Electron_Density_Grid = find_density_1D(interp_poloidal_flux(*np.meshgrid(data_R_coord, data_Z_coord, sparse=False, indexing="ij")))
+
+        # Saving equilibrium data
         np.savez(
             output_path + "Equilibrium_Output" + output_filename_suffix,
             B_R_grid=B_R_grid,
             B_T_grid=B_T_grid,
+            B_Z_grid=B_Z_grid,
+            Electron_Density=Electron_Density,
+            Electron_Density_Grid=Electron_Density_Grid,
         )
 
     elif (find_B_method == "EFITpp") or (find_B_method == "UDA_saved"):

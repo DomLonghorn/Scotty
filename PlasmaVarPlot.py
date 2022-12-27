@@ -44,6 +44,10 @@ loadfile.close()
 loadfile = np.load("Equilibrium_Output" + suffix + ".npz")
 B_R_grid = loadfile["B_R_grid"]
 B_T_grid = loadfile["B_T_grid"]
+B_Z_grid = loadfile["B_Z_grid"]
+Electron_Density = loadfile['Electron_Density']
+Electron_Density_Grid = loadfile['Electron_Density_Grid']
+loadfile.close()
 
 ## For plotting how the beam propagates from launch to entry
 launch_position_X, launch_position_Y, launch_position_Z = find_q_lab_Cartesian(
@@ -85,6 +89,8 @@ def equilcontourplot(GridToPlot, title, filename="NONE", showfig=False, savefig=
 
 equilcontourplot(B_R_grid, "B_R_grid")
 equilcontourplot(B_T_grid, "B_T_grid")
+equilcontourplot(B_Z_grid, "B_Z_grid")
+equilcontourplot(Electron_Density_Grid, "Electron_Density_Grid")
 
 
 # plt.title("Poloidal Plane")
