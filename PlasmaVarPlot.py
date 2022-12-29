@@ -72,8 +72,9 @@ def equilcontourplot(GridToPlot, title, filename="NONE", showfig=False, savefig=
     np.transpose(GridToPlot.reshape(len(data_R_coord), len(data_Z_coord))),
     levels = 30,
     cmap="inferno",
+    vmin=0,
+    vmax=1.2,
     )
-    # plt.imshow(GridToPlot, cmap='hot', interpolation='nearest')
     plt.xlim(data_R_coord[0], data_R_coord[-1])
     plt.ylim(data_Z_coord[0], data_Z_coord[-1])
     plt.xlabel("R / m")
@@ -85,8 +86,6 @@ def equilcontourplot(GridToPlot, title, filename="NONE", showfig=False, savefig=
         plt.savefig(filename + ".jpg")
     plt.close()
     
-    
-
 equilcontourplot(B_R_grid, "B_R_grid")
 equilcontourplot(B_T_grid, "B_T_grid")
 equilcontourplot(B_Z_grid, "B_Z_grid")
