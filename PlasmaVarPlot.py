@@ -66,14 +66,12 @@ def equilcontourplot(GridToPlot, title, filename="NONE", showfig=False, savefig=
     if filename == "NONE":
         filename = title
     plt.title(title)
-    CS = plt.contour(
+    CS = plt.contourf(
     data_R_coord,
     data_Z_coord,
     np.transpose(GridToPlot.reshape(len(data_R_coord), len(data_Z_coord))),
     levels = 30,
     cmap="inferno",
-    vmin=0,
-    vmax=1.2,
     )
     plt.xlim(data_R_coord[0], data_R_coord[-1])
     plt.ylim(data_Z_coord[0], data_Z_coord[-1])
@@ -90,7 +88,6 @@ equilcontourplot(B_R_grid, "B_R_grid")
 equilcontourplot(B_T_grid, "B_T_grid")
 equilcontourplot(B_Z_grid, "B_Z_grid")
 equilcontourplot(Electron_Density_Grid, "Electron_Density_Grid")
-
 
 # plt.title("Poloidal Plane")
 # contour_levels = np.linspace(0, 1, 11)
