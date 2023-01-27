@@ -70,7 +70,7 @@ def equilcontourplot(GridToPlot, title, filename="NONE", showfig=False, savefig=
     data_R_coord,
     data_Z_coord,
     np.transpose(GridToPlot.reshape(len(data_R_coord), len(data_Z_coord))),
-    levels = 30,
+    levels = 100,
     cmap="inferno",
     )
     plt.xlim(data_R_coord[0], data_R_coord[-1])
