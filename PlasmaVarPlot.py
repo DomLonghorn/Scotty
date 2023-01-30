@@ -18,7 +18,7 @@ import math
 from scipy import constants, integrate
 import sys
 
-suffix = "_Bpa0.10"
+suffix = "_Bpa0.00"
 
 # Loads in the output variables needed
 loadfile = np.load("data_output" + suffix + ".npz")
@@ -39,6 +39,10 @@ data_Z_coord = loadfile["data_Z_coord"]
 poloidalFlux_grid = loadfile["poloidalFlux_grid"]
 # ne_data_density_array = loadfile["ne_data_density_array"]
 loadfile.close()
+
+loadfile = np.load("analysis_output" + suffix + ".npz")
+e_hat_output = loadfile['e_hat_output']
+theta_m_output = loadfile['theta_m_output']
 
 # Loads in equilibrium data
 loadfile = np.load("Equilibrium_Output" + suffix + ".npz")
@@ -61,6 +65,16 @@ numberOfDataPoints = np.size(q_R_array)
 out_index = numberOfDataPoints
 
 
+def checkpolarisation(e_hat):
+    if np.real(np.dot(e_hat, np.array([0,0,1]))) == 0.0:
+        polarisation = "X-Mode"
+    elif np.real(np.dot(e_hat, np.array([0,0,1]))) > 0:
+        polarisation = "O-Mode"
+    else:
+        polarisation = "Error"
+    return polarisation
+
+print(checkpolarisation(e_hat_output[20]))
 
 def equilcontourplot(GridToPlot, title, filename="NONE", showfig=False, savefig=True):
     if filename == "NONE":
