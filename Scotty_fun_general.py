@@ -481,7 +481,22 @@ def find_Booker_gamma(electron_density, B_Total, launch_angular_frequency):
 
 
 # ----------------------------------
-
+def find_H_hot(    
+    q_R,
+    q_Z,
+    K_R,
+    K_zeta,
+    K_Z,
+    launch_angular_frequency,
+    mode_flag,
+    interp_poloidal_flux,
+    find_density_1D,
+    find_B_R,
+    find_B_T,
+    find_B_Z,
+    Te
+):
+    return 2
 
 # Functions (beam tracing 2)
 def find_H(
