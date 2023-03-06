@@ -151,6 +151,7 @@ def beam_me_up(
     toroidal_launch_angle_Torbeam,
     launch_freq_GHz,
     mode_flag,
+    dispersion_flag,
     launch_beam_width,
     launch_beam_curvature,
     launch_position,

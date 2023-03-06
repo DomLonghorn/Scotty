@@ -71,7 +71,7 @@ def checkpolarisation(e_hat):
     elif np.real(np.dot(e_hat, np.array([0,0,1]))) > 0:
         polarisation = "O-Mode"
     else:
-        polarisation = "Error"
+        polarisation = "Error: Polarisation Unknown"
     return polarisation
 
 print(checkpolarisation(e_hat_output[20]))
@@ -103,20 +103,20 @@ equilcontourplot(B_T_grid, "B_T_grid")
 equilcontourplot(B_Z_grid, "B_Z_grid")
 equilcontourplot(Electron_Density_Grid, "Electron_Density_Grid")
 
-# plt.title("Poloidal Plane")
-# contour_levels = np.linspace(0, 1, 11)
-# CS = plt.contour(
-#     data_R_coord,
-#     data_Z_coord,
-#     np.transpose(equldensityarray.reshape(len(data_R_coord), len(data_Z_coord))),
-#     contour_levels,
-#     vmin=0,
-#     vmax=1.2,
-#     cmap="inferno",
-# )
-# plt.clabel(
-#     CS, inline=True, fontsize=10, inline_spacing=-5, fmt="%1.1f", use_clabeltext=True
-# )  # Labels the flux surfaces
+plt.title("Poloidal Plane")
+contour_levels = np.linspace(0, 1, 11)
+CS = plt.contour(
+    data_R_coord,
+    data_Z_coord,
+    np.transpose(poloidalFlux_grid.reshape(len(data_R_coord), len(data_Z_coord))),
+    contour_levels,
+    vmin=0,
+    vmax=1.2,
+    cmap="inferno",
+)
+plt.clabel(
+    CS, inline=True, fontsize=10, inline_spacing=-5, fmt="%1.1f", use_clabeltext=True
+)  # Labels the flux surfaces
 
 # # plt.plot(q_R_array[:out_index], q_Z_array[:out_index], "k")
 # # plt.plot([launch_position[0], q_R_array[0]], [launch_position[2], q_Z_array[0]], ":k")
