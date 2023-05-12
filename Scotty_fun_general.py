@@ -16,7 +16,10 @@ from scipy import constants as constants
 from scipy import interpolate as interpolate
 from scipy import optimize as optimize
 from scipy import integrate as integrate
+import hot_plasma_fun as hpf
 import sys
+
+
 
 
 def read_floats_into_list_until(terminator, lines):
@@ -494,11 +497,40 @@ def find_H_hot(
     find_B_R,
     find_B_T,
     find_B_Z,
-    Te
 ):
-    return 2
+    K_magnitude = np.sqrt(K_R**2 + (K_zeta / q_R) ** 2 + K_Z**2)
+    Te=hpf.Te
+    poloidal_flux = interp_poloidal_flux(q_R, q_Z, grid=False)
+    electron_density = find_density_1D(poloidal_flux)
+    electron_density = electron_density* 10**19 # convert from 10^19 m-3 to m-3
 
+    B_R = np.squeeze(find_B_R(q_R, q_Z))
+    B_T = np.squeeze(find_B_T(q_R, q_Z))
+    B_Z = np.squeeze(find_B_Z(q_R, q_Z))
+    B_Total = np.sqrt(B_R**2 + B_T**2 + B_Z**2)
+
+    b_hat = np.array([B_R, B_T, B_Z]) / B_Total #k_para as defined in the Booker fornulation
+    K_hat = np.array([K_R, K_zeta / q_R, K_Z]) / K_magnitude #k_perp
+    K_hat = np.real(K_hat)
+
+    if np.size(q_R) == 1:
+            sin_theta_m_sq = (np.dot(b_hat, K_hat)) ** 2  # square of the mismatch angle
+    else:  # Vectorised version of find_H
+            b_hat = b_hat.T
+            K_hat = K_hat.T
+            sin_theta_m_sq = (
+                contract_special(b_hat, K_hat)
+            ) ** 2  # square of the mismatch angle
+
+    theta_m = np.sqrt(np.arcsin(sin_theta_m_sq))
+    K_perp = K_magnitude * np.cos(theta_m)
+    K_para = K_magnitude * np.sin(theta_m)
+    if K_para == 0:
+        K_para = 1e-10 #Otherwise the hot EM dispersion function will return a NaN
+    EM_disp = hpf.hot_EM_nonrel_disp(K_perp,K_para,launch_angular_frequency,B_Total,electron_density,Te)
+    return np.real(EM_disp)
 # Functions (beam tracing 2)
+hot_flag = True
 def find_H(
     q_R,
     q_Z,
@@ -513,55 +545,71 @@ def find_H(
     find_B_T,
     find_B_Z,
 ):
-    # For this functions to work,  the interpolation functions for
-    # electron density,  B_Total,  and psi  (poloidal flux) must be
-    # declared at some point before they are called
+    if hot_flag == False:
+        
+        # For this functions to work,  the interpolation functions for
+        # electron density,  B_Total,  and psi  (poloidal flux) must be
+        # declared at some point before they are called
+        K_magnitude = np.sqrt(K_R**2 + (K_zeta / q_R) ** 2 + K_Z**2)
+        wavenumber_K0 = launch_angular_frequency / constants.c
 
-    K_magnitude = np.sqrt(K_R**2 + (K_zeta / q_R) ** 2 + K_Z**2)
-    wavenumber_K0 = launch_angular_frequency / constants.c
+        poloidal_flux = interp_poloidal_flux(q_R, q_Z, grid=False)
+        electron_density = find_density_1D(poloidal_flux)
+        B_R = np.squeeze(find_B_R(q_R, q_Z))
+        B_T = np.squeeze(find_B_T(q_R, q_Z))
+        B_Z = np.squeeze(find_B_Z(q_R, q_Z))
 
-    poloidal_flux = interp_poloidal_flux(q_R, q_Z, grid=False)
-    electron_density = find_density_1D(poloidal_flux)
-    B_R = np.squeeze(find_B_R(q_R, q_Z))
-    B_T = np.squeeze(find_B_T(q_R, q_Z))
-    B_Z = np.squeeze(find_B_Z(q_R, q_Z))
+        B_Total = np.sqrt(B_R**2 + B_T**2 + B_Z**2)
+        b_hat = np.array([B_R, B_T, B_Z]) / B_Total
+        K_hat = np.array([K_R, K_zeta / q_R, K_Z]) / K_magnitude
+        if np.size(q_R) == 1:
+            sin_theta_m_sq = (np.dot(b_hat, K_hat)) ** 2  # square of the mismatch angle
+        else:  # Vectorised version of find_H
+            b_hat = b_hat.T
+            K_hat = K_hat.T
+            sin_theta_m_sq = (
+                contract_special(b_hat, K_hat)
+            ) ** 2  # square of the mismatch angle
 
-    B_Total = np.sqrt(B_R**2 + B_T**2 + B_Z**2)
-    b_hat = np.array([B_R, B_T, B_Z]) / B_Total
-    K_hat = np.array([K_R, K_zeta / q_R, K_Z]) / K_magnitude
-    if np.size(q_R) == 1:
-        sin_theta_m_sq = (np.dot(b_hat, K_hat)) ** 2  # square of the mismatch angle
-    else:  # Vectorised version of find_H
-        b_hat = b_hat.T
-        K_hat = K_hat.T
-        sin_theta_m_sq = (
-            contract_special(b_hat, K_hat)
-        ) ** 2  # square of the mismatch angle
-
-    Booker_alpha = find_Booker_alpha(
-        electron_density, B_Total, sin_theta_m_sq, launch_angular_frequency
-    )
-    Booker_beta = find_Booker_beta(
-        electron_density, B_Total, sin_theta_m_sq, launch_angular_frequency
-    )
-    Booker_gamma = find_Booker_gamma(
-        electron_density, B_Total, launch_angular_frequency
-    )
-    # Due to numerical errors, sometimes H_discriminant ends up being a very small negative number
-    # That's why we take max(0, H_discriminant) in the sqrt
-
-    H = (K_magnitude / wavenumber_K0) ** 2 + (
-        Booker_beta
-        - mode_flag
-        * np.sqrt(
-            np.maximum(
-                np.zeros_like(Booker_beta),
-                (Booker_beta**2 - 4 * Booker_alpha * Booker_gamma),
-            )
+        Booker_alpha = find_Booker_alpha(
+            electron_density, B_Total, sin_theta_m_sq, launch_angular_frequency
         )
-        # np.sqrt(Booker_beta**2 - 4*Booker_alpha*Booker_gamma)
-    ) / (2 * Booker_alpha)
-    return H
+        Booker_beta = find_Booker_beta(
+            electron_density, B_Total, sin_theta_m_sq, launch_angular_frequency
+        )
+        Booker_gamma = find_Booker_gamma(
+            electron_density, B_Total, launch_angular_frequency
+        )
+        # Due to numerical errors, sometimes H_discriminant ends up being a very small negative number
+        # That's why we take max(0, H_discriminant) in the sqrt
+
+        H = (K_magnitude / wavenumber_K0) ** 2 + (
+            Booker_beta
+            - mode_flag
+            * np.sqrt(
+                np.maximum(
+                    np.zeros_like(Booker_beta),
+                    (Booker_beta**2 - 4 * Booker_alpha * Booker_gamma),
+                )
+            )
+            # np.sqrt(Booker_beta**2 - 4*Booker_alpha*Booker_gamma)
+        ) / (2 * Booker_alpha)
+        return H
+    else:
+        return find_H_hot(
+    q_R,
+    q_Z,
+    K_R,
+    K_zeta,
+    K_Z,
+    launch_angular_frequency,
+    mode_flag,
+    interp_poloidal_flux,
+    find_density_1D,
+    find_B_R,
+    find_B_T,
+    find_B_Z,
+    )
 
 
 def find_H_numba(

@@ -17,7 +17,7 @@ from Scotty_fun_general import (
 
 # import tikzplotlib
 
-suffix = ""
+suffix = "_PerpCheck0.20"
 
 loadfile = np.load("data_output" + suffix + ".npz")
 tau_array = loadfile["tau_array"]
@@ -382,7 +382,7 @@ plt.axvline(0, c="k", linestyle="dashed")
 plt.xlabel("l / m")
 plt.ylabel("(1 / R_b) / m")
 # tikzplotlib.save("curvatures.tex")
-plt.savefig("curvatures.jpg")
+plt.show()
 # plt.figure()
 # plt.subplot(2,2,1)
 # plt.plot(distance_along_line[:out_index:plot_every_n_points],M_real_eigvec[:out_index:plot_every_n_points,0,0],'ro',markersize=1)

@@ -297,15 +297,14 @@ def get_parameters_for_Scotty(
         ##
 
     elif diagnostic == "DBS_synthetic":
-        args_dict["poloidal_launch_angle_Torbeam"] = 6.0
+        args_dict["poloidal_launch_angle_Torbeam"] = -1.0
         args_dict["toroidal_launch_angle_Torbeam"] = 0.0
         args_dict["launch_freq_GHz"] = 55.0
         args_dict["mode_flag"] = -1
-        args_dict['dispersion_flag'] = 0 #0 for cold plasma, 1 for hot plasma
         args_dict["launch_beam_width"] = 0.04
         args_dict["launch_beam_curvature"] = 1 / -4.0
         args_dict["launch_position"] = np.array(
-            [2.587, 0, -0.0157]
+            [2.1, 0, -0.0]
         )  # q_R, q_zeta, q_Z. q_zeta = 0 at launch, by definition
 
         ne_fit_param = np.array([4.0, 1.0])
@@ -322,6 +321,30 @@ def get_parameters_for_Scotty(
         kwargs_dict["R_axis"] = 1.5
         kwargs_dict["minor_radius_a"] = 0.5
 
+    elif diagnostic == "DBS_synthetic_Hot":
+            args_dict["poloidal_launch_angle_Torbeam"] = 6.0
+            args_dict["toroidal_launch_angle_Torbeam"] = 0.0
+            args_dict["launch_freq_GHz"] = 55.0
+            args_dict["mode_flag"] = -1
+            args_dict["launch_beam_width"] = 0.04
+            args_dict["launch_beam_curvature"] = 1 / -4.0
+            args_dict["launch_position"] = np.array(
+                [1.6468, 0, -0.2596]
+            )  # q_R, q_zeta, q_Z. q_zeta = 0 at launch, by definition
+            #1.829, 0, -0.1275 for mode launch of -1
+            ne_fit_param = np.array([4.0, 1.0])
+
+            kwargs_dict["density_fit_parameters"] = ne_fit_param
+            kwargs_dict["find_B_method"] = "analytical"
+            kwargs_dict["Psi_BC_flag"] = True
+            kwargs_dict["figure_flag"] = False
+            kwargs_dict["vacuum_propagation_flag"] = False
+            kwargs_dict["vacuumLaunch_flag"] = False
+            kwargs_dict["poloidal_flux_enter"] = ne_fit_param[1]
+            kwargs_dict["B_T_axis"] = 1.0
+            kwargs_dict["B_p_a"] = 0.1
+            kwargs_dict["R_axis"] = 1.5
+            kwargs_dict["minor_radius_a"] = 0.5
     return args_dict, kwargs_dict
 
 

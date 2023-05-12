@@ -69,6 +69,8 @@ import platform
 import json
 import ast
 
+
+import hot_plasma_fun as hpf
 from Scotty_fun_general import (
     read_floats_into_list_until,
     find_nearest,
@@ -151,7 +153,6 @@ def beam_me_up(
     toroidal_launch_angle_Torbeam,
     launch_freq_GHz,
     mode_flag,
-    dispersion_flag,
     launch_beam_width,
     launch_beam_curvature,
     launch_position,
@@ -1119,7 +1120,6 @@ def beam_me_up(
                 Z_coarse_search_array[first_inside_index],
                 numberOfFineSearchPoints,
             )
-            print("There are this many points:", Z_fine_search_array.size)
             poloidal_fine_search_array = np.zeros(numberOfFineSearchPoints)
             poloidal_fine_search_array = interp_poloidal_flux(
                 R_fine_search_array, Z_fine_search_array, grid=False
@@ -1323,28 +1323,149 @@ def beam_me_up(
 
     else:
         print("Beam launched from inside the plasma")
-        K_R_launch = plasmaLaunch_K[0]
-        K_zeta_launch = plasmaLaunch_K[1]
-        K_Z_launch = plasmaLaunch_K[2]
+        #Prescribed Values
+        n_para=0.4
+        hot_flag = False
+        initial_position=launch_position
+        q_R = initial_position[0]
+        q_zeta = initial_position[1]
+        q_Z = initial_position[2]
+        Te = hpf.Te #Keep this low for now
+        guess = 1106.959 #Initial guess for k_perp
+        w = launch_angular_frequency
+        theta_0 =  -np.pi - 0.2
+        #Finding the magnetic field at the initial position and the density
+        B_R= find_B_R(q_R, q_Z)
+        B_T = find_B_T(q_R, q_Z)
+        B_Z = find_B_Z(q_R, q_Z)
+        B_magnitude = np.sqrt(B_R**2 + B_T**2 + B_Z**2)
+        ne = find_density_1D(interp_poloidal_flux(q_R, q_Z))
+        ne = ne * 10**19
+        wce = hpf.wce_func(B_magnitude)
+        wpe = hpf.wpe_func(ne)
+        bigY = (wce)/(w)
+        bigX = (wpe**2)/(w**2)
+        X_UHR = 1 - bigY**2
+        print("Y= ", bigY)
+        print("X= ",bigX)
+        print("X_UHR= ", X_UHR)
+    #Finding k_para and k_perp
+        if bigX > X_UHR: #This determines that we always launch the correct mode
+            mode_flag = mode_flag*-1
+        k_para = (n_para*w)/constants.c
+        if hot_flag == True:
+                
+            P,S,D = hpf.cold_disp_func(ne, B_magnitude, w, n_para)
+            n_perp = hpf.cold_nperp_func(P,S,D,n_para, mode_flag)
+            k_perp_guess= (n_perp*w)/constants.c
+            k_perp = hpf.Muller_method_rootfinder(k_perp_guess, k_para, w, B_magnitude, ne ,Te, hpf.hot_EM_nonrel_disp)
+        else:
+            P,S,D = hpf.cold_disp_func(ne, B_magnitude, w, n_para)
+            n_perp = hpf.cold_nperp_func(P,S,D,n_para, mode_flag)
+            k_perp = (n_perp*w)/constants.c
+        k_perp_real = np.real(k_perp)
+        print(k_perp)
+    # Finding k_pol and therefore k_perp_R, k_perp_Z and k_perp_T
+        top_frac =abs(k_perp_real * B_T)
+        bottom_frac = np.sqrt(B_T**2 + (np.cos(theta_0)* B_R +np.sin(theta_0)* B_Z)**2)
+        k_pol = (top_frac/bottom_frac)
+        k_perp_R = k_pol*np.cos(theta_0)
+        k_perp_Z = k_pol*np.sin(theta_0)
+        k_perp_zeta = np.sqrt(k_perp**2 - k_perp_R**2 - k_perp_Z**2)
+        # Finding k_para_R, k_para_Z and k_para_zeta
 
-        Psi_3D_lab_initial = find_Psi_3D_lab(
-            plasmaLaunch_Psi_3D_lab_Cartesian,
-            launch_position[0],
-            plasmaLaunch_K[0],
-            plasmaLaunch_K[1],
-        )
-        K_R_initial = K_R_launch
-        K_zeta_initial = K_zeta_launch
-        K_Z_initial = K_Z_launch
+        B_magnitude = np.sqrt(B_R**2 + B_T**2 + B_Z**2)
+        B_hat = np.array([B_R, B_T, B_Z])/B_magnitude
+        k_para_components = k_para*B_hat
+        K_paraR_launch = k_para_components[0]
+        K_parazeta_launch = k_para_components[1]
+        K_paraZ_launch = k_para_components[2]
+
+        K_R_initial = np.real(K_paraR_launch + k_perp_R)
+        K_zeta_initial = np.real(K_parazeta_launch + k_perp_zeta)
+        K_Z_initial = np.real(K_paraZ_launch + k_perp_Z)
+        ####Sorting out the Psi buisness - currently very messy
+        launch_K = np.array([K_R_initial, K_zeta_initial, K_Z_initial])
+
+        poloidal_rotation_angle = (90.0 + poloidal_launch_angle_Torbeam) / 180.0 * np.pi
+
+        Psi_w_beam_launch_cartersian = np.array(
+                [
+                    [
+                        wavenumber_K0 * launch_beam_curvature
+                        + 2j * launch_beam_width ** (-2),
+                        0,
+                    ],
+                    [
+                        0,
+                        wavenumber_K0 * launch_beam_curvature
+                        + 2j * launch_beam_width ** (-2),
+                    ],
+                ]
+            )
+        identity_matrix_2D = np.array([[1, 0], [0, 1]])
+
+        rotation_matrix_pol = np.array(
+                [
+                    [np.cos(poloidal_rotation_angle), 0, np.sin(poloidal_rotation_angle)],
+                    [0, 1, 0],
+                    [-np.sin(poloidal_rotation_angle), 0, np.cos(poloidal_rotation_angle)],
+                ]
+            )
+
+        rotation_matrix_tor = np.array(
+                [
+                    [
+                        np.cos(toroidal_launch_angle_Torbeam / 180.0 * math.pi),
+                        np.sin(toroidal_launch_angle_Torbeam / 180.0 * math.pi),
+                        0,
+                    ],
+                    [
+                        -np.sin(toroidal_launch_angle_Torbeam / 180.0 * math.pi),
+                        np.cos(toroidal_launch_angle_Torbeam / 180.0 * math.pi),
+                        0,
+                    ],
+                    [0, 0, 1],
+                ]
+            )
+
+        rotation_matrix = np.matmul(rotation_matrix_pol, rotation_matrix_tor)
+        rotation_matrix_inverse = np.transpose(rotation_matrix)
+
+        Psi_3D_beam_launch_cartersian = np.array(
+                [
+                    [
+                        Psi_w_beam_launch_cartersian[0][0],
+                        Psi_w_beam_launch_cartersian[0][1],
+                        0,
+                    ],
+                    [
+                        Psi_w_beam_launch_cartersian[1][0],
+                        Psi_w_beam_launch_cartersian[1][1],
+                        0,
+                    ],
+                    [0, 0, 0],
+                ]
+            )
+        Psi_3D_lab_launch_cartersian = np.matmul(
+                rotation_matrix_inverse,
+                np.matmul(Psi_3D_beam_launch_cartersian, rotation_matrix),
+            )
+        Psi_3D_lab_launch = find_Psi_3D_lab(
+                Psi_3D_lab_launch_cartersian,
+                launch_position[0],
+                launch_position[1],
+                K_R_initial,
+                K_zeta_initial,
+            )
+        Psi_3D_lab_initial = Psi_3D_lab_launch
         initial_position = launch_position
 
-    #        print(K_R_initial)
-    #        print(K_zeta_launch)
-    #        print(K_Z_launch)
-    # -------------------
-
-    # -------------------
-
+        Psi_3D_lab_entry = None
+        distance_from_launch_to_entry = None
+        Psi_3D_lab_entry_cartersian = np.full_like(
+                    Psi_3D_lab_launch, fill_value=np.nan
+                )
     # Initial conditions for the solver
     beam_parameters_initial = np.zeros(17)
     # This used to be complex, with a length of 11, but the solver throws a warning saying that something is casted to real
@@ -1612,7 +1733,7 @@ def beam_me_up(
     # Calls scipy's initial value problem solver
 
     tau_max = (
-        10**5
+        10**6
     )  # If the ray hasn't left the plasma by the time this tau is reached, the solver gives up
     solver_arguments = (
         K_zeta_initial,
@@ -1663,7 +1784,27 @@ def beam_me_up(
 
     ray_parameters_2D = solver_ray_output.y
     tau_ray = solver_ray_output.t
-
+    q_R_array_ray = ray_parameters_2D[0, :]
+    q_Z_array_ray = ray_parameters_2D[1, :]
+    K_R_array_ray = ray_parameters_2D[2, :]
+    K_Z_array_ray = ray_parameters_2D[3, :]
+    B_R_ray = find_B_R(q_R_array_ray, q_Z_array_ray)
+    B_Z_ray = find_B_Z(q_R_array_ray, q_Z_array_ray)
+    B_T_ray = find_B_T(q_R_array_ray, q_Z_array_ray)
+    ne_ray =  find_density_1D(interp_poloidal_flux(q_R_array_ray, q_Z_array_ray))
+    np.savez(
+        output_path + "ray_output" + output_filename_suffix,
+        q_R_array_ray=q_R_array_ray,
+        q_Z_array_ray=q_Z_array_ray,
+        K_R_array_ray=K_R_array_ray,
+        K_Z_array_ray=K_Z_array_ray,
+        K_zeta_initial=K_zeta_initial,
+        B_R_ray=B_R_ray,
+        B_Z_ray=B_Z_ray,
+        B_T_ray=B_T_ray,
+        ne_ray=ne_ray,)
+    
+    exit()
     # Uncomment to help with troubleshooting
     # ray_parameters_2D_events = solver_ray_output.y_events
     # ray_parameters_cutoff = np.squeeze(ray_parameters_2D_events[4])
@@ -1675,6 +1816,7 @@ def beam_me_up(
     # plt.plot(ray_parameters_2D[0,:], ray_parameters_2D[1,:])
     # plt.plot(ray_parameters_cutoff[0],ray_parameters_cutoff[1],'o')
     # plt.clabel(CS, inline=True, fontsize=10,inline_spacing=1,fmt= '%1.1f',use_clabeltext=True) # Labels the flux surfaces
+    # plt.show()
 
     solver_ray_status = solver_ray_output.status
     if solver_ray_status == 0:
@@ -1803,7 +1945,7 @@ def beam_me_up(
         )
 
     # The beam solver outputs data at these values of tau
-    # Tell the solver which values of tau we want for the output
+    # Tell the solver which values of tau we want for the outputf
     tau_points = np.linspace(0, tau_leave, len_tau)
     # Remove the last point, probably does a good job of making sure that the new last point is inside the plasma
     tau_points = np.delete(tau_points, -1).tolist()
@@ -1867,7 +2009,7 @@ def beam_me_up(
         # This function modifies tau_points via a side-effect
         bisect.insort(tau_points, tau_cutoff_fine)
         tau_points = np.array(tau_points)
-
+        tau_points = np.unique(tau_points)
     """
     - Propagates the beam
     """
@@ -1983,52 +2125,110 @@ def beam_me_up(
     poloidal_flux_output = interp_poloidal_flux(q_R_array, q_Z_array, grid=False)
     electron_density_output = find_density_1D(poloidal_flux_output)
 
+
     # Calculates nabla_K H
-    dH_dKR_output = find_dH_dKR(
-        q_R_array,
-        q_Z_array,
-        K_R_array,
-        K_zeta_initial,
-        K_Z_array,
-        launch_angular_frequency,
-        mode_flag,
-        delta_K_R,
-        interp_poloidal_flux,
-        find_density_1D,
-        find_B_R,
-        find_B_T,
-        find_B_Z,
-    )
-    dH_dKzeta_output = find_dH_dKzeta(
-        q_R_array,
-        q_Z_array,
-        K_R_array,
-        K_zeta_initial,
-        K_Z_array,
-        launch_angular_frequency,
-        mode_flag,
-        delta_K_zeta,
-        interp_poloidal_flux,
-        find_density_1D,
-        find_B_R,
-        find_B_T,
-        find_B_Z,
-    )
-    dH_dKZ_output = find_dH_dKZ(
-        q_R_array,
-        q_Z_array,
-        K_R_array,
-        K_zeta_initial,
-        K_Z_array,
-        launch_angular_frequency,
-        mode_flag,
-        delta_K_Z,
-        interp_poloidal_flux,
-        find_density_1D,
-        find_B_R,
-        find_B_T,
-        find_B_Z,
-    )
+
+    dH_dKR_list = []
+    dH_dK_list = []
+    dH_dKZ_list = []
+    for i in range(q_R_array.size):
+        dH_dKR = find_dH_dKR(
+            q_R_array[i],
+            q_Z_array[i],
+            K_R_array[i],
+            K_zeta_initial,
+            K_Z_array[i],
+            launch_angular_frequency,
+            mode_flag,
+            delta_K_R,
+            interp_poloidal_flux,
+            find_density_1D,
+            find_B_R,
+            find_B_T,
+            find_B_Z,
+        )
+        dH_dKzeta= find_dH_dKzeta(
+            q_R_array[i],
+            q_Z_array[i],
+            K_R_array[i],
+            K_zeta_initial,
+            K_Z_array[i],
+            launch_angular_frequency,
+            mode_flag,
+            delta_K_zeta,
+            interp_poloidal_flux,
+            find_density_1D,
+            find_B_R,
+            find_B_T,
+            find_B_Z,
+        )
+        dH_dKZ = find_dH_dKZ(
+            q_R_array[i],
+            q_Z_array[i],
+            K_R_array[i],
+            K_zeta_initial,
+            K_Z_array[i],
+            launch_angular_frequency,
+            mode_flag,
+            delta_K_Z,
+            interp_poloidal_flux,
+            find_density_1D,
+            find_B_R,
+            find_B_T,
+            find_B_Z,
+        )
+        dH_dKR_list.append(dH_dKR)
+        dH_dK_list.append(dH_dKzeta)
+        dH_dKZ_list.append(dH_dKZ)
+    
+    dH_dKR_output = np.array(dH_dKR_list)
+    dH_dKzeta_output = np.array(dH_dK_list)
+    dH_dKZ_output = np.array(dH_dKZ_list)
+    # dH_dKR_output = find_dH_dKR(
+    #     q_R_array,
+    #     q_Z_array,
+    #     K_R_array,
+    #     K_zeta_initial,
+    #     K_Z_array,
+    #     launch_angular_frequency,
+    #     mode_flag,
+    #     delta_K_R,
+    #     interp_poloidal_flux,
+    #     find_density_1D,
+    #     find_B_R,
+    #     find_B_T,
+    #     find_B_Z,
+    # )
+    # dH_dKzeta_output = find_dH_dKzeta(
+    #     q_R_array,
+    #     q_Z_array,
+    #     K_R_array,
+    #     K_zeta_initial,
+    #     K_Z_array,
+    #     launch_angular_frequency,
+    #     mode_flag,
+    #     delta_K_zeta,
+    #     interp_poloidal_flux,
+    #     find_density_1D,
+    #     find_B_R,
+    #     find_B_T,
+    #     find_B_Z,
+    # )
+    # dH_dKZ_output = find_dH_dKZ(
+    #     q_R_array,
+    #     q_Z_array,
+    #     K_R_array,
+    #     K_zeta_initial,
+    #     K_Z_array,
+    #     launch_angular_frequency,
+    #     mode_flag,
+    #     delta_K_Z,
+    #     interp_poloidal_flux,
+    #     find_density_1D,
+    #     find_B_R,
+    #     find_B_T,
+    #     find_B_Z,
+    # )
 
     # Calculates g_hat
     g_hat_output = np.zeros([numberOfDataPoints, 3])
@@ -2090,12 +2290,17 @@ def beam_me_up(
     # But good for checking whether things are working properly
     # -------------------
     #
-    H_output = find_H(
-        q_R_array,
-        q_Z_array,
-        K_R_array,
+    H_output_list = []
+    H_other_list = []
+    dH_dR_list = []
+    dH_dZ_list = []
+    for i in range(q_R_array.size):
+        H_output = find_H(
+        q_R_array[i],
+        q_Z_array[i],
+        K_R_array[i],
         K_zeta_initial,
-        K_Z_array,
+        K_Z_array[i],
         launch_angular_frequency,
         mode_flag,
         interp_poloidal_flux,
@@ -2103,61 +2308,69 @@ def beam_me_up(
         find_B_R,
         find_B_T,
         find_B_Z,
-    )
-    H_other = find_H(
-        q_R_array,
-        q_Z_array,
-        K_R_array,
-        K_zeta_initial,
-        K_Z_array,
-        launch_angular_frequency,
-        -mode_flag,
-        interp_poloidal_flux,
-        find_density_1D,
-        find_B_R,
-        find_B_T,
-        find_B_Z,
-    )
-
-    # nabla H along the ray
-    dH_dR_output = find_dH_dR(
-        q_R_array,
-        q_Z_array,
-        K_R_array,
-        K_zeta_initial,
-        K_Z_array,
-        launch_angular_frequency,
-        mode_flag,
-        delta_R,
-        interp_poloidal_flux,
-        find_density_1D,
-        find_B_R,
-        find_B_T,
-        find_B_Z,
-    )
-    dH_dZ_output = find_dH_dZ(
-        q_R_array,
-        q_Z_array,
-        K_R_array,
-        K_zeta_initial,
-        K_Z_array,
-        launch_angular_frequency,
-        mode_flag,
-        delta_Z,
-        interp_poloidal_flux,
-        find_density_1D,
-        find_B_R,
-        find_B_T,
-        find_B_Z,
-    )
+        )
+        H_output_list.append(H_output)
+        H_other = find_H(
+            q_R_array[i],
+            q_Z_array[i],
+            K_R_array[i],
+            K_zeta_initial,
+            K_Z_array[i],
+            launch_angular_frequency,
+            -mode_flag,
+            interp_poloidal_flux,
+            find_density_1D,
+            find_B_R,
+            find_B_T,
+            find_B_Z,
+        )
+        H_other_list.append(H_other)
+        # nabla H along the ray
+        dH_dR_output = find_dH_dR(
+            q_R_array[i],
+            q_Z_array[i],
+            K_R_array[i],
+            K_zeta_initial,
+            K_Z_array[i],
+            launch_angular_frequency,
+            mode_flag,
+            delta_R,
+            interp_poloidal_flux,
+            find_density_1D,
+            find_B_R,
+            find_B_T,
+            find_B_Z,
+        )
+        dH_dR_list.append(dH_dR_output)
+        dH_dZ_output = find_dH_dZ(
+            q_R_array[i],
+            q_Z_array[i],
+            K_R_array[i],
+            K_zeta_initial,
+            K_Z_array[i],
+            launch_angular_frequency,
+            mode_flag,
+            delta_Z,
+            interp_poloidal_flux,
+            find_density_1D,
+            find_B_R,
+            find_B_T,
+            find_B_Z,
+        )
+        dH_dZ_list.append(dH_dZ_output)
+    
+    H_output = np.array(H_output_list)
+    H_other = np.array(H_other_list)
+    dH_dR_output= np.array(dH_dR_list)
+    dH_dZ_output = np.array(dH_dZ_list)
 
     # Gradients of poloidal flux along the ray
-    dpolflux_dR_debugging = find_dpolflux_dR(
-        q_R_array, q_Z_array, delta_R, interp_poloidal_flux
-    )
-    dpolflux_dZ_debugging = find_dpolflux_dZ(
-        q_R_array, q_Z_array, delta_Z, interp_poloidal_flux
-    )
+    # dpolflux_dR_debugging = find_dpolflux_dR(
+    #     q_R_array, q_Z_array, delta_R, interp_poloidal_flux
+    # )
+    # dpolflux_dZ_debugging = find_dpolflux_dZ(
+    #     q_R_array, q_Z_array, delta_Z, interp_poloidal_flux
+    # )
     # d2polflux_dR2_FFD_debugging =
     # d2polflux_dZ2_FFD_debugging =
 
@@ -2204,8 +2417,8 @@ def beam_me_up(
             dH_dR_output=dH_dR_output,
             dH_dZ_output=dH_dZ_output,
             # grad_grad_H_output=grad_grad_H_output,gradK_grad_H_output=gradK_grad_H_output,gradK_gradK_H_output=gradK_gradK_H_output,
-            dpolflux_dR_debugging=dpolflux_dR_debugging,
-            dpolflux_dZ_debugging=dpolflux_dZ_debugging,
+            # dpolflux_dR_debugging=dpolflux_dR_debugging,
+            # dpolflux_dZ_debugging=dpolflux_dZ_debugging,
             epsilon_para_output=epsilon_para_output,
             epsilon_perp_output=epsilon_perp_output,
             epsilon_g_output=epsilon_g_output,
@@ -2823,198 +3036,198 @@ def beam_me_up(
     loc_b_r_s = loc_b * loc_r * loc_s
     loc_b_r = loc_b * loc_r
 
-    if detailed_analysis_flag and (cutoff_index + 1 != len(tau_array)):
-        """
-        Now to do some more-complex analysis of the localisation.
-        This part of the code fails in some situations, hence I'm making
-        it possible to skip this section
-        """
-        # Finds the 1/e2 values (localisation)
-        loc_b_r_s_max_over_e2 = (
-            loc_b_r_s.max() / (np.e) ** 2
-        )  # loc_b_r_s.max() / 2.71**2
-        loc_b_r_max_over_e2 = loc_b_r.max() / (np.e) ** 2  # loc_b_r.max() / 2.71**2
+    # if detailed_analysis_flag and (cutoff_index + 1 != len(tau_array)):
+    #     """
+    #     Now to do some more-complex analysis of the localisation.
+    #     This part of the code fails in some situations, hence I'm making
+    #     it possible to skip this section
+    #     """
+    #     # Finds the 1/e2 values (localisation)
+    #     loc_b_r_s_max_over_e2 = (
+    #         loc_b_r_s.max() / (np.e) ** 2
+    #     )  # loc_b_r_s.max() / 2.71**2
+    #     loc_b_r_max_over_e2 = loc_b_r.max() / (np.e) ** 2  # loc_b_r.max() / 2.71**2
 
-        # Gives the inter-e2 range (analogous to interquartile range) in l-lc
-        loc_b_r_s_delta_l_1 = find_x0(
-            l_lc[0:cutoff_index], loc_b_r_s[0:cutoff_index], loc_b_r_s_max_over_e2
-        )
-        loc_b_r_s_delta_l_2 = find_x0(
-            l_lc[cutoff_index::], loc_b_r_s[cutoff_index::], loc_b_r_s_max_over_e2
-        )
-        # The 1/e2 distances,  (l - l_c)
-        loc_b_r_s_delta_l = np.array([loc_b_r_s_delta_l_1, loc_b_r_s_delta_l_2])
-        loc_b_r_s_half_width_l = (loc_b_r_s_delta_l_2 - loc_b_r_s_delta_l_1) / 2
-        loc_b_r_delta_l_1 = find_x0(
-            l_lc[0:cutoff_index], loc_b_r[0:cutoff_index], loc_b_r_max_over_e2
-        )
-        loc_b_r_delta_l_2 = find_x0(
-            l_lc[cutoff_index::], loc_b_r[cutoff_index::], loc_b_r_max_over_e2
-        )
-        # The 1/e2 distances,  (l - l_c)
-        loc_b_r_delta_l = np.array([loc_b_r_delta_l_1, loc_b_r_delta_l_2])
-        loc_b_r_half_width_l = (loc_b_r_delta_l_1 - loc_b_r_delta_l_2) / 2
+    #     # Gives the inter-e2 range (analogous to interquartile range) in l-lc
+    #     loc_b_r_s_delta_l_1 = find_x0(
+    #         l_lc[0:cutoff_index], loc_b_r_s[0:cutoff_index], loc_b_r_s_max_over_e2
+    #     )
+    #     loc_b_r_s_delta_l_2 = find_x0(
+    #         l_lc[cutoff_index::], loc_b_r_s[cutoff_index::], loc_b_r_s_max_over_e2
+    #     )
+    #     # The 1/e2 distances,  (l - l_c)
+    #     loc_b_r_s_delta_l = np.array([loc_b_r_s_delta_l_1, loc_b_r_s_delta_l_2])
+    #     loc_b_r_s_half_width_l = (loc_b_r_s_delta_l_2 - loc_b_r_s_delta_l_1) / 2
+    #     loc_b_r_delta_l_1 = find_x0(
+    #         l_lc[0:cutoff_index], loc_b_r[0:cutoff_index], loc_b_r_max_over_e2
+    #     )
+    #     loc_b_r_delta_l_2 = find_x0(
+    #         l_lc[cutoff_index::], loc_b_r[cutoff_index::], loc_b_r_max_over_e2
+    #     )
+    #     # The 1/e2 distances,  (l - l_c)
+    #     loc_b_r_delta_l = np.array([loc_b_r_delta_l_1, loc_b_r_delta_l_2])
+    #     loc_b_r_half_width_l = (loc_b_r_delta_l_1 - loc_b_r_delta_l_2) / 2
 
-        # Estimates the inter-e2 range (analogous to interquartile range) in kperp1, from l-lc
-        # Bear in mind that since abs(kperp1) is minimised at cutoff, one really has to use that in addition to these.
-        loc_b_r_s_delta_kperp1_1 = find_x0(
-            k_perp_1_bs[0:cutoff_index], l_lc[0:cutoff_index], loc_b_r_s_delta_l_1
-        )
-        loc_b_r_s_delta_kperp1_2 = find_x0(
-            k_perp_1_bs[cutoff_index::], l_lc[cutoff_index::], loc_b_r_s_delta_l_2
-        )
-        loc_b_r_s_delta_kperp1 = np.array(
-            [loc_b_r_s_delta_kperp1_1, loc_b_r_s_delta_kperp1_2]
-        )
-        loc_b_r_delta_kperp1_1 = find_x0(
-            k_perp_1_bs[0:cutoff_index], l_lc[0:cutoff_index], loc_b_r_delta_l_1
-        )
-        loc_b_r_delta_kperp1_2 = find_x0(
-            k_perp_1_bs[cutoff_index::], l_lc[cutoff_index::], loc_b_r_delta_l_2
-        )
-        loc_b_r_delta_kperp1 = np.array(
-            [loc_b_r_delta_kperp1_1, loc_b_r_delta_kperp1_2]
-        )
+    #     # Estimates the inter-e2 range (analogous to interquartile range) in kperp1, from l-lc
+    #     # Bear in mind that since abs(kperp1) is minimised at cutoff, one really has to use that in addition to these.
+    #     loc_b_r_s_delta_kperp1_1 = find_x0(
+    #         k_perp_1_bs[0:cutoff_index], l_lc[0:cutoff_index], loc_b_r_s_delta_l_1
+    #     )
+    #     loc_b_r_s_delta_kperp1_2 = find_x0(
+    #         k_perp_1_bs[cutoff_index::], l_lc[cutoff_index::], loc_b_r_s_delta_l_2
+    #     )
+    #     loc_b_r_s_delta_kperp1 = np.array(
+    #         [loc_b_r_s_delta_kperp1_1, loc_b_r_s_delta_kperp1_2]
+    #     )
+    #     loc_b_r_delta_kperp1_1 = find_x0(
+    #         k_perp_1_bs[0:cutoff_index], l_lc[0:cutoff_index], loc_b_r_delta_l_1
+    #     )
+    #     loc_b_r_delta_kperp1_2 = find_x0(
+    #         k_perp_1_bs[cutoff_index::], l_lc[cutoff_index::], loc_b_r_delta_l_2
+    #     )
+    #     loc_b_r_delta_kperp1 = np.array(
+    #         [loc_b_r_delta_kperp1_1, loc_b_r_delta_kperp1_2]
+    #     )
 
-        # Calculate the cumulative integral of the localisation pieces
-        cum_loc_b_r_s = integrate.cumtrapz(loc_b_r_s, distance_along_line, initial=0)
-        cum_loc_b_r_s = cum_loc_b_r_s - max(cum_loc_b_r_s) / 2
-        cum_loc_b_r = integrate.cumtrapz(loc_b_r, distance_along_line, initial=0)
-        cum_loc_b_r = cum_loc_b_r - max(cum_loc_b_r) / 2
+    #     # Calculate the cumulative integral of the localisation pieces
+    #     cum_loc_b_r_s = integrate.cumtrapz(loc_b_r_s, distance_along_line, initial=0)
+    #     cum_loc_b_r_s = cum_loc_b_r_s - max(cum_loc_b_r_s) / 2
+    #     cum_loc_b_r = integrate.cumtrapz(loc_b_r, distance_along_line, initial=0)
+    #     cum_loc_b_r = cum_loc_b_r - max(cum_loc_b_r) / 2
 
-        # Finds the 1/e2 values (cumulative integral of localisation)
-        # cum_loc_b_r_s_max_over_e2_1 = cum_loc_b_r_s.min() * (1 - 1 / (np.e)**2)
-        # cum_loc_b_r_s_max_over_e2_2 = cum_loc_b_r_s.max() * (1 - 1 / (np.e)**2)
-        # cum_loc_b_r_max_over_e2_1 = cum_loc_b_r.min() * (1 - 1 / (np.e)**2)
-        # cum_loc_b_r_max_over_e2_2 = cum_loc_b_r.max() * (1 - 1 / (np.e)**2)
-        cum_loc_b_r_s_max_over_e2 = cum_loc_b_r_s.max() * (1 - 1 / (np.e) ** 2)
-        cum_loc_b_r_max_over_e2 = cum_loc_b_r.max() * (1 - 1 / (np.e) ** 2)
+    #     # Finds the 1/e2 values (cumulative integral of localisation)
+    #     # cum_loc_b_r_s_max_over_e2_1 = cum_loc_b_r_s.min() * (1 - 1 / (np.e)**2)
+    #     # cum_loc_b_r_s_max_over_e2_2 = cum_loc_b_r_s.max() * (1 - 1 / (np.e)**2)
+    #     # cum_loc_b_r_max_over_e2_1 = cum_loc_b_r.min() * (1 - 1 / (np.e)**2)
+    #     # cum_loc_b_r_max_over_e2_2 = cum_loc_b_r.max() * (1 - 1 / (np.e)**2)
+    #     cum_loc_b_r_s_max_over_e2 = cum_loc_b_r_s.max() * (1 - 1 / (np.e) ** 2)
+    #     cum_loc_b_r_max_over_e2 = cum_loc_b_r.max() * (1 - 1 / (np.e) ** 2)
 
-        # Gives the inter-e range (analogous to interquartile range) in l-lc
-        cum_loc_b_r_s_delta_l_1 = find_x0(
-            l_lc, cum_loc_b_r_s, -cum_loc_b_r_s_max_over_e2
-        )
-        cum_loc_b_r_s_delta_l_2 = find_x0(
-            l_lc, cum_loc_b_r_s, cum_loc_b_r_s_max_over_e2
-        )
-        cum_loc_b_r_s_delta_l = np.array(
-            [cum_loc_b_r_s_delta_l_1, cum_loc_b_r_s_delta_l_2]
-        )
-        cum_loc_b_r_s_half_width = (
-            cum_loc_b_r_s_delta_l_2 - cum_loc_b_r_s_delta_l_1
-        ) / 2
-        cum_loc_b_r_delta_l_1 = find_x0(l_lc, cum_loc_b_r, -cum_loc_b_r_max_over_e2)
-        cum_loc_b_r_delta_l_2 = find_x0(l_lc, cum_loc_b_r, cum_loc_b_r_max_over_e2)
-        cum_loc_b_r_delta_l = np.array([cum_loc_b_r_delta_l_1, cum_loc_b_r_delta_l_2])
-        cum_loc_b_r_half_width = (cum_loc_b_r_delta_l_2 - cum_loc_b_r_delta_l_1) / 2
+    #     # Gives the inter-e range (analogous to interquartile range) in l-lc
+    #     cum_loc_b_r_s_delta_l_1 = find_x0(
+    #         l_lc, cum_loc_b_r_s, -cum_loc_b_r_s_max_over_e2
+    #     )
+    #     cum_loc_b_r_s_delta_l_2 = find_x0(
+    #         l_lc, cum_loc_b_r_s, cum_loc_b_r_s_max_over_e2
+    #     )
+    #     cum_loc_b_r_s_delta_l = np.array(
+    #         [cum_loc_b_r_s_delta_l_1, cum_loc_b_r_s_delta_l_2]
+    #     )
+    #     cum_loc_b_r_s_half_width = (
+    #         cum_loc_b_r_s_delta_l_2 - cum_loc_b_r_s_delta_l_1
+    #     ) / 2
+    #     cum_loc_b_r_delta_l_1 = find_x0(l_lc, cum_loc_b_r, -cum_loc_b_r_max_over_e2)
+    #     cum_loc_b_r_delta_l_2 = find_x0(l_lc, cum_loc_b_r, cum_loc_b_r_max_over_e2)
+    #     cum_loc_b_r_delta_l = np.array([cum_loc_b_r_delta_l_1, cum_loc_b_r_delta_l_2])
+    #     cum_loc_b_r_half_width = (cum_loc_b_r_delta_l_2 - cum_loc_b_r_delta_l_1) / 2
 
-        # Gives the inter-e2 range (analogous to interquartile range) in kperp1.
-        # Bear in mind that since abs(kperp1) is minimised at cutoff, one really has to use that in addition to these.
-        cum_loc_b_r_s_delta_kperp1_1 = find_x0(
-            k_perp_1_bs[0:cutoff_index],
-            cum_loc_b_r_s[0:cutoff_index],
-            -cum_loc_b_r_s_max_over_e2,
-        )
-        cum_loc_b_r_s_delta_kperp1_2 = find_x0(
-            k_perp_1_bs[cutoff_index::],
-            cum_loc_b_r_s[cutoff_index::],
-            cum_loc_b_r_s_max_over_e2,
-        )
-        cum_loc_b_r_s_delta_kperp1 = np.array(
-            [cum_loc_b_r_s_delta_kperp1_1, cum_loc_b_r_s_delta_kperp1_2]
-        )
-        cum_loc_b_r_delta_kperp1_1 = find_x0(
-            k_perp_1_bs[0:cutoff_index],
-            cum_loc_b_r[0:cutoff_index],
-            -cum_loc_b_r_max_over_e2,
-        )
-        cum_loc_b_r_delta_kperp1_2 = find_x0(
-            k_perp_1_bs[cutoff_index::],
-            cum_loc_b_r[cutoff_index::],
-            cum_loc_b_r_max_over_e2,
-        )
-        cum_loc_b_r_delta_kperp1 = np.array(
-            [cum_loc_b_r_delta_kperp1_1, cum_loc_b_r_delta_kperp1_2]
-        )
+    #     # Gives the inter-e2 range (analogous to interquartile range) in kperp1.
+    #     # Bear in mind that since abs(kperp1) is minimised at cutoff, one really has to use that in addition to these.
+    #     cum_loc_b_r_s_delta_kperp1_1 = find_x0(
+    #         k_perp_1_bs[0:cutoff_index],
+    #         cum_loc_b_r_s[0:cutoff_index],
+    #         -cum_loc_b_r_s_max_over_e2,
+    #     )
+    #     cum_loc_b_r_s_delta_kperp1_2 = find_x0(
+    #         k_perp_1_bs[cutoff_index::],
+    #         cum_loc_b_r_s[cutoff_index::],
+    #         cum_loc_b_r_s_max_over_e2,
+    #     )
+    #     cum_loc_b_r_s_delta_kperp1 = np.array(
+    #         [cum_loc_b_r_s_delta_kperp1_1, cum_loc_b_r_s_delta_kperp1_2]
+    #     )
+    #     cum_loc_b_r_delta_kperp1_1 = find_x0(
+    #         k_perp_1_bs[0:cutoff_index],
+    #         cum_loc_b_r[0:cutoff_index],
+    #         -cum_loc_b_r_max_over_e2,
+    #     )
+    #     cum_loc_b_r_delta_kperp1_2 = find_x0(
+    #         k_perp_1_bs[cutoff_index::],
+    #         cum_loc_b_r[cutoff_index::],
+    #         cum_loc_b_r_max_over_e2,
+    #     )
+    #     cum_loc_b_r_delta_kperp1 = np.array(
+    #         [cum_loc_b_r_delta_kperp1_1, cum_loc_b_r_delta_kperp1_2]
+    #     )
 
-        # Gives the mode l-lc for backscattering
-        loc_b_r_s_max_index = find_nearest(loc_b_r_s, loc_b_r_s.max())
-        loc_b_r_s_max_l_lc = (
-            distance_along_line[loc_b_r_s_max_index] - distance_along_line[cutoff_index]
-        )
-        loc_b_r_max_index = find_nearest(loc_b_r, loc_b_r.max())
-        loc_b_r_max_l_lc = (
-            distance_along_line[loc_b_r_max_index] - distance_along_line[cutoff_index]
-        )
+    #     # Gives the mode l-lc for backscattering
+    #     loc_b_r_s_max_index = find_nearest(loc_b_r_s, loc_b_r_s.max())
+    #     loc_b_r_s_max_l_lc = (
+    #         distance_along_line[loc_b_r_s_max_index] - distance_along_line[cutoff_index]
+    #     )
+    #     loc_b_r_max_index = find_nearest(loc_b_r, loc_b_r.max())
+    #     loc_b_r_max_l_lc = (
+    #         distance_along_line[loc_b_r_max_index] - distance_along_line[cutoff_index]
+    #     )
 
-        # Gives the mean l-lc for backscattering
-        cum_loc_b_r_s_mean_l_lc = (
-            np.trapz(loc_b_r_s * distance_along_line, distance_along_line)
-            / np.trapz(loc_b_r_s, distance_along_line)
-            - distance_along_line[cutoff_index]
-        )
-        cum_loc_b_r_mean_l_lc = (
-            np.trapz(loc_b_r * distance_along_line, distance_along_line)
-            / np.trapz(loc_b_r, distance_along_line)
-            - distance_along_line[cutoff_index]
-        )
+    #     # Gives the mean l-lc for backscattering
+    #     cum_loc_b_r_s_mean_l_lc = (
+    #         np.trapz(loc_b_r_s * distance_along_line, distance_along_line)
+    #         / np.trapz(loc_b_r_s, distance_along_line)
+    #         - distance_along_line[cutoff_index]
+    #     )
+    #     cum_loc_b_r_mean_l_lc = (
+    #         np.trapz(loc_b_r * distance_along_line, distance_along_line)
+    #         / np.trapz(loc_b_r, distance_along_line)
+    #         - distance_along_line[cutoff_index]
+    #     )
 
-        # Gives the median l-lc for backscattering
-        cum_loc_b_r_s_delta_l_0 = find_x0(l_lc, cum_loc_b_r_s, 0)
-        cum_loc_b_r_delta_l_0 = find_x0(l_lc, cum_loc_b_r, 0)
+    #     # Gives the median l-lc for backscattering
+    #     cum_loc_b_r_s_delta_l_0 = find_x0(l_lc, cum_loc_b_r_s, 0)
+    #     cum_loc_b_r_delta_l_0 = find_x0(l_lc, cum_loc_b_r, 0)
 
-        # Due to the divergency of the ray piece, the mode kperp1 for backscattering is exactly that at the cut-off
+    #     # Due to the divergency of the ray piece, the mode kperp1 for backscattering is exactly that at the cut-off
 
-        # Gives the mean kperp1 for backscattering
-        cum_loc_b_r_s_mean_kperp1 = np.trapz(
-            loc_b_r_s * k_perp_1_bs, k_perp_1_bs
-        ) / np.trapz(loc_b_r_s, k_perp_1_bs)
-        cum_loc_b_r_mean_kperp1 = np.trapz(
-            loc_b_r * k_perp_1_bs, k_perp_1_bs
-        ) / np.trapz(loc_b_r, k_perp_1_bs)
+    #     # Gives the mean kperp1 for backscattering
+    #     cum_loc_b_r_s_mean_kperp1 = np.trapz(
+    #         loc_b_r_s * k_perp_1_bs, k_perp_1_bs
+    #     ) / np.trapz(loc_b_r_s, k_perp_1_bs)
+    #     cum_loc_b_r_mean_kperp1 = np.trapz(
+    #         loc_b_r * k_perp_1_bs, k_perp_1_bs
+    #     ) / np.trapz(loc_b_r, k_perp_1_bs)
 
-        # Gives the median kperp1 for backscattering
-        cum_loc_b_r_s_delta_kperp1_0 = find_x0(k_perp_1_bs, cum_loc_b_r_s, 0)
-        # Only works if point is before cutoff. To fix.
-        cum_loc_b_r_delta_kperp1_0 = find_x0(
-            k_perp_1_bs[0:cutoff_index], cum_loc_b_r[0:cutoff_index], 0
-        )
+    #     # Gives the median kperp1 for backscattering
+    #     cum_loc_b_r_s_delta_kperp1_0 = find_x0(k_perp_1_bs, cum_loc_b_r_s, 0)
+    #     # Only works if point is before cutoff. To fix.
+    #     cum_loc_b_r_delta_kperp1_0 = find_x0(
+    #         k_perp_1_bs[0:cutoff_index], cum_loc_b_r[0:cutoff_index], 0
+    #     )
 
-        # To make the plots look nice
-        k_perp_1_bs_plot = np.append(-2 * wavenumber_K0, k_perp_1_bs)
-        k_perp_1_bs_plot = np.append(k_perp_1_bs_plot, -2 * wavenumber_K0)
-        cum_loc_b_r_s_plot = np.append(cum_loc_b_r_s[0], cum_loc_b_r_s)
-        cum_loc_b_r_s_plot = np.append(cum_loc_b_r_s_plot, cum_loc_b_r_s[-1])
-        cum_loc_b_r_plot = np.append(cum_loc_b_r[0], cum_loc_b_r)
-        cum_loc_b_r_plot = np.append(cum_loc_b_r_plot, cum_loc_b_r[-1])
-    else:
-        loc_b_r_s_max_over_e2 = None
-        loc_b_r_max_over_e2 = None
-        loc_b_r_s_delta_l = None
-        loc_b_r_delta_l = None
-        loc_b_r_s_delta_kperp1 = None
-        loc_b_r_delta_kperp1 = None
-        cum_loc_b_r_s = None
-        cum_loc_b_r = None
-        k_perp_1_bs_plot = None
-        cum_loc_b_r_s_plot = None
-        cum_loc_b_r_plot = None
-        cum_loc_b_r_s_max_over_e2 = None
-        cum_loc_b_r_max_over_e2 = None
-        cum_loc_b_r_s_delta_l = None
-        cum_loc_b_r_delta_l = None
-        cum_loc_b_r_s_delta_kperp1 = None
-        cum_loc_b_r_delta_kperp1 = None
-        loc_b_r_s_max_l_lc = None
-        loc_b_r_max_l_lc = None
-        cum_loc_b_r_s_mean_l_lc = None
-        cum_loc_b_r_mean_l_lc = None
-        cum_loc_b_r_s_delta_l_0 = None
-        cum_loc_b_r_delta_l_0 = None
-        cum_loc_b_r_s_mean_kperp1 = None
-        cum_loc_b_r_mean_kperp1 = None
-        cum_loc_b_r_s_delta_kperp1_0 = None
-        cum_loc_b_r_delta_kperp1_0 = None
+    #     # To make the plots look nice
+    #     k_perp_1_bs_plot = np.append(-2 * wavenumber_K0, k_perp_1_bs)
+    #     k_perp_1_bs_plot = np.append(k_perp_1_bs_plot, -2 * wavenumber_K0)
+    #     cum_loc_b_r_s_plot = np.append(cum_loc_b_r_s[0], cum_loc_b_r_s)
+    #     cum_loc_b_r_s_plot = np.append(cum_loc_b_r_s_plot, cum_loc_b_r_s[-1])
+    #     cum_loc_b_r_plot = np.append(cum_loc_b_r[0], cum_loc_b_r)
+    #     cum_loc_b_r_plot = np.append(cum_loc_b_r_plot, cum_loc_b_r[-1])
+    
+    loc_b_r_s_max_over_e2 = None
+    loc_b_r_max_over_e2 = None
+    loc_b_r_s_delta_l = None
+    loc_b_r_delta_l = None
+    loc_b_r_s_delta_kperp1 = None
+    loc_b_r_delta_kperp1 = None
+    cum_loc_b_r_s = None
+    cum_loc_b_r = None
+    k_perp_1_bs_plot = None
+    cum_loc_b_r_s_plot = None
+    cum_loc_b_r_plot = None
+    cum_loc_b_r_s_max_over_e2 = None
+    cum_loc_b_r_max_over_e2 = None
+    cum_loc_b_r_s_delta_l = None
+    cum_loc_b_r_delta_l = None
+    cum_loc_b_r_s_delta_kperp1 = None
+    cum_loc_b_r_delta_kperp1 = None
+    loc_b_r_s_max_l_lc = None
+    loc_b_r_max_l_lc = None
+    cum_loc_b_r_s_mean_l_lc = None
+    cum_loc_b_r_mean_l_lc = None
+    cum_loc_b_r_s_delta_l_0 = None
+    cum_loc_b_r_delta_l_0 = None
+    cum_loc_b_r_s_mean_kperp1 = None
+    cum_loc_b_r_mean_kperp1 = None
+    cum_loc_b_r_s_delta_kperp1_0 = None
+    cum_loc_b_r_delta_kperp1_0 = None
 
     # integrated_localisation_b_p_r_delta_kperp1_0 = find_x0(k_perp_1_bs[0:cutoff_index],integrated_localisation_b_p_r[0:cutoff_index],0)
 
@@ -3050,61 +3263,61 @@ def beam_me_up(
     # print('ST first 2 terms / ST full: ', abs((G_term2[theta_m_min_idx]+G_term1[theta_m_min_idx])/G_full[theta_m_min_idx]) )
 
     # Calculates nabla nabla H, nabla_K nabla H, nabla_K nabla_K H
-    grad_grad_H = find_grad_grad_H_vectorised(
-        q_R_array,
-        q_Z_array,
-        K_R_array,
-        K_zeta_initial,
-        K_Z_array,
-        launch_angular_frequency,
-        mode_flag,
-        delta_R,
-        delta_Z,
-        interp_poloidal_flux,
-        find_density_1D,
-        find_B_R,
-        find_B_T,
-        find_B_Z,
-    )
+    # grad_grad_H = find_grad_grad_H_vectorised(
+    #     q_R_array,
+    #     q_Z_array,
+    #     K_R_array,
+    #     K_zeta_initial,
+    #     K_Z_array,
+    #     launch_angular_frequency,
+    #     mode_flag,
+    #     delta_R,
+    #     delta_Z,
+    #     interp_poloidal_flux,
+    #     find_density_1D,
+    #     find_B_R,
+    #     find_B_T,
+    #     find_B_Z,
+    # )
 
-    gradK_grad_H = find_gradK_grad_H_vectorised(
-        q_R_array,
-        q_Z_array,
-        K_R_array,
-        K_zeta_initial,
-        K_Z_array,
-        launch_angular_frequency,
-        mode_flag,
-        delta_K_R,
-        delta_K_zeta,
-        delta_K_Z,
-        delta_R,
-        delta_Z,
-        interp_poloidal_flux,
-        find_density_1D,
-        find_B_R,
-        find_B_T,
-        find_B_Z,
-    )
-    grad_gradK_H = np.swapaxes(gradK_grad_H, 2, 1)
+    # gradK_grad_H = find_gradK_grad_H_vectorised(
+    #     q_R_array,
+    #     q_Z_array,
+    #     K_R_array,
+    #     K_zeta_initial,
+    #     K_Z_array,
+    #     launch_angular_frequency,
+    #     mode_flag,
+    #     delta_K_R,
+    #     delta_K_zeta,
+    #     delta_K_Z,
+    #     delta_R,
+    #     delta_Z,
+    #     interp_poloidal_flux,
+    #     find_density_1D,
+    #     find_B_R,
+    #     find_B_T,
+    #     find_B_Z,
+    # )
+    # grad_gradK_H = np.swapaxes(gradK_grad_H, 2, 1)
 
-    gradK_gradK_H = find_gradK_gradK_H_vectorised(
-        q_R_array,
-        q_Z_array,
-        K_R_array,
-        K_zeta_initial,
-        K_Z_array,
-        launch_angular_frequency,
-        mode_flag,
-        delta_K_R,
-        delta_K_zeta,
-        delta_K_Z,
-        interp_poloidal_flux,
-        find_density_1D,
-        find_B_R,
-        find_B_T,
-        find_B_Z,
-    )
+    # gradK_gradK_H = find_gradK_gradK_H_vectorised(
+    #     q_R_array,
+    #     q_Z_array,
+    #     K_R_array,
+    #     K_zeta_initial,
+    #     K_Z_array,
+    #     launch_angular_frequency,
+    #     mode_flag,
+    #     delta_K_R,
+    #     delta_K_zeta,
+    #     delta_K_Z,
+    #     interp_poloidal_flux,
+    #     find_density_1D,
+    #     find_B_R,
+    #     find_B_T,
+    #     find_B_Z,
+    # )
 
     # gradK_gradK_H[:,0,1] = - gradK_gradK_H[:,0,1]
 
@@ -3288,9 +3501,9 @@ def beam_me_up(
         yhat_dot_grad_bhat_dot_xhat_output=yhat_dot_grad_bhat_dot_xhat_output,
         yhat_dot_grad_bhat_dot_yhat_output=yhat_dot_grad_bhat_dot_yhat_output,
         yhat_dot_grad_bhat_dot_ghat_output=yhat_dot_grad_bhat_dot_ghat_output,
-        grad_grad_H=grad_grad_H,
-        gradK_grad_H=gradK_grad_H,
-        gradK_gradK_H=gradK_gradK_H,
+        # grad_grad_H=grad_grad_H,
+        # gradK_grad_H=gradK_grad_H,
+        # gradK_gradK_H=gradK_gradK_H,
         d_theta_d_tau=d_theta_d_tau,
         d_xhat_d_tau_dot_yhat_output=d_xhat_d_tau_dot_yhat_output,
         kappa_dot_xhat_output=kappa_dot_xhat_output,

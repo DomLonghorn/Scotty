@@ -9,12 +9,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 from Scotty_fun_general import find_waist, find_distance_from_waist,find_q_lab_Cartesian, find_nearest, contract_special
 from Scotty_fun_general import find_normalised_plasma_freq, find_normalised_gyro_freq, make_unit_vector_from_cross_product, find_vec_lab_Cartesian
-import tikzplotlib
 import math
 from scipy import constants, integrate
 import sys
 
-suffix = ''
+suffix = "_PerpCheck0.20"
 
 loadfile = np.load('data_output' + suffix + '.npz')
 tau_array = loadfile['tau_array']
@@ -79,7 +78,6 @@ data_R_coord = loadfile['data_R_coord']
 data_Z_coord = loadfile['data_Z_coord']
 launch_position = loadfile['launch_position']
 launch_beam_width = loadfile['launch_beam_width']
-launch_beam_radius_of_curvature = loadfile['launch_beam_radius_of_curvature']
 launch_freq_GHz = loadfile['launch_freq_GHz']
 loadfile.close()
 
@@ -161,6 +159,8 @@ plt.ylabel('Z / m')
 plt.tight_layout(pad=1.08, h_pad=None, w_pad=None, rect=None)
 plt.gca().set_aspect('equal', adjustable='box')
 plt.savefig('propagation_poloidal.jpg',dpi=200)
+plt.show()
+
 
 plt.figure(figsize=(5,5))
 plt.title('Toroidal Plane')
@@ -181,6 +181,7 @@ plt.ylabel('Y / m')
 # plt.ylim(-0.2,0.2)
 plt.gca().set_aspect('equal', adjustable='box')
 plt.savefig('propagation_toroidal.jpg',dpi=200)
+plt.show()
 
 # q_X_test = integrate.cumtrapz(g_magnitude_output*g_hat_Cartesian[:,0],tau_array,initial=0) + q_X_array[0]
 # q_Y_test = integrate.cumtrapz(g_magnitude_output*g_hat_Cartesian[:,1],tau_array,initial=0) + q_Y_array[0]
