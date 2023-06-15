@@ -100,25 +100,25 @@ for i in range(len(B_R_grid)):
 
 # suffix2 = "_XTest11"
 # suffix2 = "_CritLaunch2"
-suffix2 = '_TenkeVFlag-1'
-loadfile=np.load("ray_output" + suffix2 + ".npz")
-ray1_R_coords = loadfile['q_R_array_ray']
-ray1_Z_coords = loadfile['q_Z_array_ray']
-K_R_ray1 = loadfile['K_R_array_ray']
-K_Z_ray1 = loadfile['K_Z_array_ray']
-K_zeta_ray1 = loadfile['K_zeta_initial']
-B_R_ray1 = loadfile['B_R_ray']
-B_Z_ray1 = loadfile['B_Z_ray']
-B_T_ray1 = loadfile['B_T_ray']
-ne_ray = loadfile['ne_ray']
 
-B_magnitude_array = np.sqrt(B_R_ray1**2 + B_T_ray1**2 + B_Z_ray1**2)
-K_magnitude_array = np.sqrt(K_R_ray1**2 + K_Z_ray1**2 + K_zeta_ray1**2)
+# loadfile=np.load("ray_output" + suffix2 + ".npz")
+# ray1_R_coords = loadfile['q_R_array_ray']
+# ray1_Z_coords = loadfile['q_Z_array_ray']
+# K_R_ray1 = loadfile['K_R_array_ray']
+# K_Z_ray1 = loadfile['K_Z_array_ray']
+# K_zeta_ray1 = loadfile['K_zeta_initial']
+# B_R_ray1 = loadfile['B_R_ray']
+# B_Z_ray1 = loadfile['B_Z_ray']
+# B_T_ray1 = loadfile['B_T_ray']
+# ne_ray = loadfile['ne_ray']
+
+# B_magnitude_array = np.sqrt(B_R_ray1**2 + B_T_ray1**2 + B_Z_ray1**2)
+# K_magnitude_array = np.sqrt(K_R_ray1**2 + K_Z_ray1**2 + K_zeta_ray1**2)
 
 
-theta_m_output = []
-BigX_ray_output = []
-BigY_ray_output = []
+# theta_m_output = []
+# BigX_ray_output = []
+# BigY_ray_output = []
 
 
 RCoords = []
@@ -137,7 +137,7 @@ for i in range(2, 11, 2):
     else:
          temps.append(str(i)) 
     
-ColdDispSuffix = '_Dave'
+ColdDispSuffix = '_ColdLaunch'
 loadfile=np.load("ray_output" + ColdDispSuffix + ".npz")
 ray_R_coords = loadfile['q_R_array_ray']
 ray_Z_coords = loadfile['q_Z_array_ray']
@@ -158,7 +158,7 @@ ray_Z_coords = loadfile['q_Z_array_ray']
 
 
 plt.figure(figsize=(10, 8))
-plt.title("Variation of Te for an O-mode launch, " r'$\theta_{pol}$ = -$\pi - 0.2$')
+plt.title("Variation of Te for an O-mode launch, " r'$\theta_{pol}$ = $- 0.2$')
 contour_levels = np.linspace(0, 1, 11)
 CS = plt.contour(
     data_R_coord,

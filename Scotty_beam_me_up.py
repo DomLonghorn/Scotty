@@ -1324,16 +1324,15 @@ def beam_me_up(
     else:
         print("Beam launched from inside the plasma")
         #Prescribed Values
-        n_para=0.4
-        hot_flag = False
+        n_para=0.6
+        hot_flag = True
         initial_position=launch_position
         q_R = initial_position[0]
         q_zeta = initial_position[1]
         q_Z = initial_position[2]
         Te = hpf.Te #Keep this low for now
-        guess = 1106.959 #Initial guess for k_perp
         w = launch_angular_frequency
-        theta_0 =  -np.pi - 0.2
+        theta_0 =  -0.2
         #Finding the magnetic field at the initial position and the density
         B_R= find_B_R(q_R, q_Z)
         B_T = find_B_T(q_R, q_Z)
@@ -1351,39 +1350,83 @@ def beam_me_up(
         print("X_UHR= ", X_UHR)
     #Finding k_para and k_perp
         if bigX > X_UHR: #This determines that we always launch the correct mode
-            mode_flag = mode_flag*-1
+            initial_mode_flag = mode_flag*-1
         k_para = (n_para*w)/constants.c
         if hot_flag == True:
                 
             P,S,D = hpf.cold_disp_func(ne, B_magnitude, w, n_para)
-            n_perp = hpf.cold_nperp_func(P,S,D,n_para, mode_flag)
+            n_perp = hpf.cold_nperp_func(P,S,D,n_para, initial_mode_flag)
             k_perp_guess= (n_perp*w)/constants.c
+            print("cold k_perp",k_perp_guess)
             k_perp = hpf.Muller_method_rootfinder(k_perp_guess, k_para, w, B_magnitude, ne ,Te, hpf.hot_EM_nonrel_disp)
+            print("hot k_perp",k_perp)
+            print(k_perp)
         else:
             P,S,D = hpf.cold_disp_func(ne, B_magnitude, w, n_para)
-            n_perp = hpf.cold_nperp_func(P,S,D,n_para, mode_flag)
+            n_perp = hpf.cold_nperp_func(P,S,D,n_para, initial_mode_flag)
             k_perp = (n_perp*w)/constants.c
+            if np.imag(k_perp) != 0:
+                print("Error, non propagating mode")
+                print(k_perp)
+                exit()
+            print(k_perp)
         k_perp_real = np.real(k_perp)
-        print(k_perp)
     # Finding k_pol and therefore k_perp_R, k_perp_Z and k_perp_T
-        top_frac =abs(k_perp_real * B_T)
-        bottom_frac = np.sqrt(B_T**2 + (np.cos(theta_0)* B_R +np.sin(theta_0)* B_Z)**2)
-        k_pol = (top_frac/bottom_frac)
+        top_frac =(k_perp_real**2 * B_T**2)
+        bottom_frac = (B_T**2 + (np.cos(theta_0)* B_R +np.sin(theta_0)* B_Z)**2)
+        k_pol = np.sqrt(top_frac/bottom_frac)
         k_perp_R = k_pol*np.cos(theta_0)
         k_perp_Z = k_pol*np.sin(theta_0)
-        k_perp_zeta = np.sqrt(k_perp**2 - k_perp_R**2 - k_perp_Z**2)
+        k_perp_zeta1 = np.sqrt(k_perp_real**2 - k_pol**2)
+        k_perp_zeta2 = -1*k_perp_zeta1
+        dotcheck1 = (np.dot([k_perp_R, k_perp_zeta1, k_perp_Z], [B_R, B_T, B_Z]))
+        dotcheck2 =(np.dot([k_perp_R, k_perp_zeta2, k_perp_Z], [B_R, B_T, B_Z]))
+        if round(dotcheck1, 3) == 0:
+            k_perp_zeta = k_perp_zeta1
+        elif round(dotcheck2, 3) == 0:
+            k_perp_zeta = k_perp_zeta2
+        else:
+            print("Error, k_perp_zeta not valid")
+            print(k_perp_zeta1)
+            print(k_perp_zeta2)
+            exit()
         # Finding k_para_R, k_para_Z and k_para_zeta
 
         B_magnitude = np.sqrt(B_R**2 + B_T**2 + B_Z**2)
         B_hat = np.array([B_R, B_T, B_Z])/B_magnitude
+
+    
         k_para_components = k_para*B_hat
         K_paraR_launch = k_para_components[0]
         K_parazeta_launch = k_para_components[1]
         K_paraZ_launch = k_para_components[2]
 
         K_R_initial = np.real(K_paraR_launch + k_perp_R)
-        K_zeta_initial = np.real(K_parazeta_launch + k_perp_zeta)
+        K_phi_initial = np.real(K_parazeta_launch + k_perp_zeta)
+        K_zeta_initial = K_phi_initial * q_R
         K_Z_initial = np.real(K_paraZ_launch + k_perp_Z)
+
+        k_perpdotb = np.dot([k_perp_R, k_perp_zeta, k_perp_Z], [B_R, B_T, B_Z]) 
+        if np.round(k_perpdotb, 4) != 0:
+            print("Error, k_perp not perpendicular to B")
+            
+            exit()
+        Initial_H = find_H(
+            q_R,
+            q_Z,
+            K_R_initial,
+            K_zeta_initial,
+            K_Z_initial,
+            launch_angular_frequency,
+            mode_flag,
+            interp_poloidal_flux,
+            find_density_1D,
+            find_B_R,
+            find_B_T,
+            find_B_Z,
+        )
+        print("Initial H = ", Initial_H)
+        # exit()
         ####Sorting out the Psi buisness - currently very messy
         launch_K = np.array([K_R_initial, K_zeta_initial, K_Z_initial])
 
@@ -1733,7 +1776,7 @@ def beam_me_up(
     # Calls scipy's initial value problem solver
 
     tau_max = (
-        10**6
+        10**4
     )  # If the ray hasn't left the plasma by the time this tau is reached, the solver gives up
     solver_arguments = (
         K_zeta_initial,
@@ -1792,6 +1835,27 @@ def beam_me_up(
     B_Z_ray = find_B_Z(q_R_array_ray, q_Z_array_ray)
     B_T_ray = find_B_T(q_R_array_ray, q_Z_array_ray)
     ne_ray =  find_density_1D(interp_poloidal_flux(q_R_array_ray, q_Z_array_ray))
+
+    H_output_list = []
+    for i in range (len(q_R_array_ray)):
+
+        H_output = find_H(
+            q_R_array_ray[i],
+            q_Z_array_ray[i],
+            K_R_array_ray[i],
+            K_zeta_initial,
+            K_Z_array_ray[i],
+            launch_angular_frequency,
+            mode_flag,
+            interp_poloidal_flux,
+            find_density_1D,
+            find_B_R,
+            find_B_T,
+            find_B_Z,
+        )
+        H_output_list.append(H_output)
+    H_output = np.array(H_output_list)
+
     np.savez(
         output_path + "ray_output" + output_filename_suffix,
         q_R_array_ray=q_R_array_ray,
@@ -1802,8 +1866,10 @@ def beam_me_up(
         B_R_ray=B_R_ray,
         B_Z_ray=B_Z_ray,
         B_T_ray=B_T_ray,
-        ne_ray=ne_ray,)
-    
+        ne_ray=ne_ray,
+        H_output=H_output,
+        Te=Te,
+        theta_0=theta_0,)
     exit()
     # Uncomment to help with troubleshooting
     # ray_parameters_2D_events = solver_ray_output.y_events

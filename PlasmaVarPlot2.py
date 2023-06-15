@@ -64,6 +64,7 @@ UHR_R_coords = []
 UHR_Z_coords = []
 CritDensity_R_coords = []
 CritDensity_Z_coords = []
+CutoffDensity = []
 Xcutoff_R_coords = []
 Xcutoff_Z_coords = []
 for i in range(len(B_R_grid)):
@@ -95,12 +96,11 @@ for i in range(len(B_R_grid)):
         if R <= 0.01:
             Xcutoff_R_coords.append(data_R_coord[i])
             Xcutoff_Z_coords.append(data_Z_coord[j])
-
-
-
+            
 # suffix2 = "_XTest11"
 # suffix2 = "_CritLaunch2"
-suffix2 = '_Dave'
+X_UHR =0.0
+suffix2 = '_ColdO'
 loadfile=np.load("ray_output" + suffix2 + ".npz")
 ray1_R_coords = loadfile['q_R_array_ray']
 ray1_Z_coords = loadfile['q_Z_array_ray']
@@ -111,6 +111,10 @@ B_R_ray1 = loadfile['B_R_ray']
 B_Z_ray1 = loadfile['B_Z_ray']
 B_T_ray1 = loadfile['B_T_ray']
 ne_ray = loadfile['ne_ray']
+H_output = loadfile['H_output']
+theta_pol = loadfile['theta_0']
+Temp = loadfile['Te']
+loadfile.close()
 
 B_magnitude_array = np.sqrt(B_R_ray1**2 + B_T_ray1**2 + B_Z_ray1**2)
 K_magnitude_array = np.sqrt(K_R_ray1**2 + K_Z_ray1**2 + K_zeta_ray1**2)
@@ -137,7 +141,7 @@ for i in range(len(B_R_ray1)):
     wce = hpf.wce_func(B_mag)
     BigY_ray = wce/launch_angular_frequency
     BigX_ray = (wpe**2)/(launch_angular_frequency**2)
-
+    print(np.round(BigX_ray + BigY_ray**2, 1))
     if np.round(BigX_ray + BigY_ray**2, 1) == 1:
          print(BigX_ray)
          print("result!")
@@ -152,19 +156,36 @@ K_perp_array = K_magnitude_array * np.cos(theta_m)
 K_para_array = K_magnitude_array * np.sin(theta_m)
 
 N_perp_array1 = (K_perp_array * constants.c)/launch_angular_frequency
+N_perp_max_index = np.argmax(N_perp_array1)
+# print(N_perp_max_index)
+# print(N_perp_array1[498])
+# N_perp_array1 = N_perp_array1[0:N_perp_max_index]
+# BigX_ray_output = BigX_ray_output[0:N_perp_max_index]
 
-plt.figure()
-plt.plot(BigX_ray_output, N_perp_array1, label='Launch Mode 1')
+N_para_array1 = (K_para_array * constants.c)/launch_angular_frequency
+# N_para_array1 = N_para_array1[0:N_perp_max_index]
+theta_pol = np.round(theta_pol, 4)
+# X_UHR = 0.0
+plt.figure(dpi=120,figsize=(12, 3))
+plt.suptitle(r"$\theta_{pol}$ = " + str(round(theta_pol, 4)))
+plt.subplot(141)
+plt.plot(BigX_ray_output, N_perp_array1, label='O mode launch')
 plt.xlabel("X")
-plt.ylabel("K_perp")
-plt.title( "Te = 5.0 keV")
-plt.axvline(x=(X_UHR), color='red', linestyle='--', label='UHR')
-plt.scatter(BigX_ray_output[0], N_perp_array1[0], color='green', label='Launch')
+plt.ylabel(r'$N_{\perp}$')
+plt.title( "Density Profile of O-mode launch")
+plt.axvline(x=(X_UHR), color='red', linestyle='--', label=r'$X_{UHR}$')
+plt.scatter(BigX_ray_output[0], N_perp_array1[0], color='green', label='Launch Position')
 plt.legend()
-plt.show()
 
+plt.subplot(142)
+plt.plot(BigX_ray_output, N_para_array1, label='O mode launch')
+plt.xlabel("X")
+plt.ylabel(r'$N_{\parallel}$')
+plt.axvline(x=(X_UHR), color='red', linestyle='--', label=r'$X_{UHR}$')
+plt.scatter(BigX_ray_output[0], N_para_array1[0], color='green', label='Launch Position')
+plt.legend()
 
-suffix3 = '_Derek'
+suffix3 = '_OModeResonance1'
 loadfile=np.load("ray_output" + suffix3 + ".npz")
 ray2_R_coords = loadfile['q_R_array_ray']
 ray2_Z_coords = loadfile['q_Z_array_ray']
@@ -223,8 +244,10 @@ def equilcontourplot(GridToPlot, title, filename="NONE", showfig=False, savefig=
 # equilcontourplot(B_T_grid, "B_T_grid")
 # equilcontourplot(B_Z_grid, "B_Z_grid")
 # equilcontourplot(Electron_Density_Grid, "Electron Density")
-plt.figure(figsize=(10, 8))
-plt.title("Poloidal Plane, Te = 5.0 keV, " r'$\theta_{pol}$ = -$\pi - 0.2$')
+
+# plt.title("Poloidal Plane, Te = 5.0 keV, " r'$\theta_{pol}$ = -$\pi - 0.2$')
+plt.subplot(143)
+plt.title("Poloidal Plane")
 contour_levels = np.linspace(0, 1, 11)
 CS = plt.contour(
     data_R_coord,
@@ -246,14 +269,56 @@ if Xcutoff_R_coords is not None and Xcutoff_Z_coords is not None:
         plt.scatter(Xcutoff_R_coords, Xcutoff_Z_coords, c='blue', s=4, label='x mode Cutoff')
 
 # plt.plot(q_R_array[:out_index], q_Z_array[:out_index], "k", label="Ray Trajectory (O mode)")
-plt.plot(ray1_R_coords, ray1_Z_coords, "k", label="Dave")
-plt.plot(ray2_R_coords, ray2_Z_coords, "b", label="Derek")
-plt.plot(ray2_R_coords[0], ray2_Z_coords[0], "rx", label="Launch Position")
+plt.plot(ray1_R_coords, ray1_Z_coords, "b", label="O Mode Launch")
+# plt.plot(ray2_R_coords, ray2_Z_coords, "k", label="O Mode Launch")
+plt.plot(ray1_R_coords[0], ray1_Z_coords[0], "rx", label="Launch Position")
 # plt.plot([launch_position[0], q_R_array[0]], [launch_position[2], q_Z_array[0]], ":k")
 plt.xlim(data_R_coord[0], data_R_coord[-1])
 plt.ylim(data_Z_coord[0], data_Z_coord[-1])
 plt.xlabel("R / m")
 plt.ylabel("Z / m")
 plt.legend()
+
+
+# H_output = H_output[0:N_perp_max_index]
+plt.subplot(144)
+plt.title('$\log_{10}(|\mathcal{M}|)$')
+plt.plot(BigX_ray_output, np.log10(abs(H_output)), label='O mode launch')
+plt.scatter(BigX_ray_output[0], np.log10(abs(H_output[0])), color='green', label='Launch Position')
 plt.show()
 # plt.savefig("Ray_Propagation.jpg")
+
+
+# plt.figure
+# plt.title("Poloidal Plane")
+# contour_levels = np.linspace(0, 1, 11)
+# CS = plt.contour(
+#     data_R_coord,
+#     data_Z_coord,
+#     np.transpose(poloidalFlux_grid.reshape(len(data_R_coord), len(data_Z_coord))),
+#     contour_levels,
+#     vmin=0,
+#     vmax=1.2,
+#     cmap="inferno",
+# )
+# plt.clabel(
+#     CS, inline=True, fontsize=10, inline_spacing=-5, fmt="%1.1f", use_clabeltext=True
+# )  # Labels the flux surfaces
+# if UHR_R_coords is not None and UHR_Z_coords is not None:
+#         plt.scatter(UHR_R_coords, UHR_Z_coords, c='green', s=4, label=r'$X_{UHR}$')
+# if CritDensity_R_coords is not None and CritDensity_Z_coords is not None:
+#         plt.scatter(CritDensity_R_coords, CritDensity_Z_coords, c='red', s=4, label=r'$X_{crit}$')
+# if Xcutoff_R_coords is not None and Xcutoff_Z_coords is not None:
+#         plt.scatter(Xcutoff_R_coords, Xcutoff_Z_coords, c='blue', s=4, label='x mode Cutoff')
+
+# # plt.plot(q_R_array[:out_index], q_Z_array[:out_index], "k", label="Ray Trajectory (O mode)")
+# plt.plot(ray1_R_coords, ray1_Z_coords, "b", label="X Mode Launch")
+# # plt.plot(ray2_R_coords, ray2_Z_coords, "k", label="O Mode Launch")
+# plt.plot(ray1_R_coords[0], ray1_Z_coords[0], "rx", label="Launch Position")
+# # plt.plot([launch_position[0], q_R_array[0]], [launch_position[2], q_Z_array[0]], ":k")
+# plt.xlim(data_R_coord[0], data_R_coord[-1])
+# plt.ylim(data_Z_coord[0], data_Z_coord[-1])
+# plt.xlabel("R / m")
+# plt.ylabel("Z / m")
+# plt.legend()
+# plt.show()

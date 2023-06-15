@@ -522,7 +522,8 @@ def find_H_hot(
                 contract_special(b_hat, K_hat)
             ) ** 2  # square of the mismatch angle
 
-    theta_m = np.sqrt(np.arcsin(sin_theta_m_sq))
+    # theta_m = np.sqrt(np.arcsin(sin_theta_m_sq))
+    theta_m = np.arcsin(np.sqrt(sin_theta_m_sq))
     K_perp = K_magnitude * np.cos(theta_m)
     K_para = K_magnitude * np.sin(theta_m)
     if K_para == 0:

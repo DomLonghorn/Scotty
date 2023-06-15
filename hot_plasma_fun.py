@@ -10,7 +10,7 @@ import cmath
 import sys
 
 
-Te = 5 #in keV
+Te = 2.5 #in keV
 #Cyclotron & Plasma frequency functions
 def wce_func(B):
     return constants.e*B/constants.m_e
@@ -108,7 +108,7 @@ def hot_EM_nonrel_disp(kperp,kpar,w,B,ne,Te,lmax=50,symlog = False, give_tensor 
     K = get_Ktensor(kperp,kpar,vte,wpe,wce,w,lmax)
     D = Dtensor_func(kperp,kpar,w,K)
     
-    try: #needed because root-finder can sometimes screw up array dimensions
+    try: #needed because root-finder can sometimes mess up array dimensions
         Dnew = np.zeros((3,3),dtype=complex)
         Dnew[0,0] = D[0][0]
         Dnew[0,1] = D[0][1]
@@ -260,9 +260,9 @@ def Muller_method_rootfinder(guess,kpar,w,B,ne,Te,func,lmax = 50,roottol=1e-8,\
                         lambda kperp: func(float(kperp.real) + 1j*float(kperp.imag),kpar,w,B,ne,Te,lmax = lmax),\
                         kguess_array, solver='muller',tol=roottol,maxsteps=maxsteps, verbose = verbose)\
                         )
-        f = func(nperp*w_c,kpar,w,B,ne,Te,lmax,False)
+        f = func(kperp*w_c,kpar,w,B,ne,Te,lmax,False)
     except:
-        nperp = np.nan
+        kperp = np.nan
         f = np.nan
         istop = 1
         pass
